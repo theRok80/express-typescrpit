@@ -23,4 +23,6 @@ dayjs.extend(weekday);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-export { dayjs };
+const ENVIRONMENT = process.env.ENVIRONMENT || 'development';
+
+export { dayjs, ENVIRONMENT };

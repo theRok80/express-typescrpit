@@ -20,4 +20,31 @@ function formValidationResult(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-export { formValidationResult };
+/**
+ * Stringify object to JSON string
+ *
+ * @param data object or string
+ * @returns
+ */
+function jsonStringify(data: Record<string, unknown> | string): string {
+  if (typeof data === 'string') {
+    return data;
+  }
+  return JSON.stringify(data);
+}
+
+/**
+ * Parse JSON string to object
+ *
+ * @param data string or object
+ * @returns
+ */
+function jsonParse(data: string): Record<string, unknown> {
+  try {
+    return JSON.parse(data);
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+}
+
+export { formValidationResult, jsonStringify, jsonParse };
