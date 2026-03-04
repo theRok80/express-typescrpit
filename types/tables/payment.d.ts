@@ -13,3 +13,16 @@ export interface Product {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface LogPaymentPrepare {
+  uuid: string;
+  userId: number;
+  orderId: string;
+  productId: number;
+  pg: string;
+  method: string;
+  amount: number;
+  status: number;
+  createdAt: Date;
+  updatedAt: Date;
+}

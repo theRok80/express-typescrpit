@@ -15,6 +15,5 @@ export default function addParamsToProps(req: Request, res: Response, next: Next
       req.props.requestParams[k] = v;
     }
   });
-  console.log(req.props.requestParams);
   next();
 }

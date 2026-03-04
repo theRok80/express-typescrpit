@@ -8,7 +8,6 @@ function isLocalhost(ip: string) {
 
 function formValidationResult(req: Request, res: Response, next: NextFunction) {
   const errors = validationResult(req);
-  console.log(errors.array());
 
   if (!errors.isEmpty()) {
     // 에러 확인은 내부만 가능하도록
@@ -26,7 +25,7 @@ function formValidationResult(req: Request, res: Response, next: NextFunction) {
  * @param data object or string
  * @returns
  */
-function jsonStringify(data: Record<string, unknown> | string): string {
+function jsonStringify(data: object | string): string {
   if (typeof data === 'string') {
     return data;
   }
@@ -39,7 +38,7 @@ function jsonStringify(data: Record<string, unknown> | string): string {
  * @param data string or object
  * @returns
  */
-function jsonParse(data: string | Record<string, unknown>): Record<string, unknown> {
+function jsonParse(data: string | object): object {
   if (typeof data === 'string') {
     return JSON.parse(data);
   }

@@ -4,6 +4,9 @@ import { executeQuery } from '../tools/database';
 import tables from '../tools/tables';
 import { UserId } from '../types/variables';
 import { User } from '../types/tables/user';
+import { Props } from '../types/props';
+import { LogSign } from '../types/tables/sign';
+import { CURRENT_DATETIME } from '../constants';
 
 const debug = Debug('dev:handlers:user');
 
@@ -83,7 +86,7 @@ async function createUser({
  * @param email email to sign in
  * @returns user
  */
-async function getUserByEmail({ email }: { email: string }): Promise<User | undefined> {
+async function getUserByEmail({ email }: Pick<User, 'email'>): Promise<User | undefined> {
   if (!email) {
     throw new Error('Email is required');
   }
@@ -104,4 +107,44 @@ async function getUserByEmail({ email }: { email: string }): Promise<User | unde
   }
 }
 
-export { makePasswordHash, isEmailExists, createUser, getUserByEmail };
+async function addLogSign({
+  type,
+  props,
+  result,
+  errorMessage,
+}: {
+  type: LogSign['type'];
+  props: Props;
+  result: LogSign['result'];
+  errorMessage?: LogSign['errorMessage'];
+}): Promise<void> {
+  const { uuid, clientIp } = props;
+  const { email } = props.requestParams as Pick<User, 'email'>;
+
+  if (!uuid || !email) {
+    return;
+  }
+
+  try {
+    await executeQuery({
+      printName: 'user.addLogSign',
+      print: true,
+      table: tables.sign.log,
+      action: 'insert',
+      set: {
+        uuid,
+        email,
+        clientIp,
+        type,
+        result,
+        errorMessage,
+        createdAt: CURRENT_DATETIME,
+      },
+    });
+  } catch (e) {
+    debug.extend('addLogSign:error')(e);
+    throw e;
+  }
+}
+
+export { makePasswordHash, isEmailExists, createUser, getUserByEmail, addLogSign };

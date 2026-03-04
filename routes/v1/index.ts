@@ -1,10 +1,10 @@
 import express from 'express';
-import userRouter from './user';
+import signRouter from './sign';
 import webhookRouter from './webhook';
 
 const router = express.Router();
 
-router.use('/user', userRouter);
+router.use('/sign', signRouter);
 router.use('/webhook', webhookRouter);
 
 router.get('/', (req, res) => {

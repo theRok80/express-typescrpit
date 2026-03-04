@@ -20,7 +20,7 @@ function keyNameWithoutSalt(key: string): string {
   return replaceKey.join(':');
 }
 
-async function get(key: string): Promise<Record<string, unknown> | string | number | undefined> {
+async function get(key: string): Promise<object | string | number | undefined> {
   if (!key) {
     throw new Error('key is required');
   }
@@ -36,14 +36,15 @@ async function get(key: string): Promise<Record<string, unknown> | string | numb
   }
 }
 
-async function set(key: string, value: Record<string, unknown>, ttl = 60): Promise<void> {
-  if (!key || !value) {
+async function set(key: string, value: string | object, ttl = 60): Promise<void> {
+  if (!key || value == null) {
     throw new Error('invalid params');
   }
 
   const cacheKey = keyName(key);
   try {
-    await client.set(cacheKey, jsonStringify(value), 'EX', ttl);
+    const serialized = typeof value === 'string' ? value : jsonStringify(value);
+    await client.set(cacheKey, serialized, 'EX', ttl);
   } catch (e) {
     console.log('redisCache set error', e);
     throw e;
@@ -85,7 +86,7 @@ async function keys(key: string, noSalt = false): Promise<string[]> {
   }
 }
 
-async function mget(keys: string[]): Promise<(Record<string, unknown> | undefined)[]> {
+async function mget(keys: string[]): Promise<object> {
   if (!keys || !Array.isArray(keys) || keys.length === 0) {
     throw new Error('keys array is required');
   }

@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get, incr, expire, remove } from '../tools/redisCache';
 import * as response from '../tools/response';
 
-const debug = Debug('dev:middlewares:signUpThrottle');
+const debug = Debug('dev:middlewares:signThrottle');
 
 /**
  *
@@ -13,7 +13,7 @@ const debug = Debug('dev:middlewares:signUpThrottle');
  * @param res Response
  * @param next NextFunction
  */
-export default async function signUpThrottle(req: Request, res: Response, next: NextFunction) {
+export default async function signThrottle(req: Request, res: Response, next: NextFunction) {
   try {
     const ipTtl = 60;
     const maxRequestsPerMinute = 10;
@@ -22,7 +22,15 @@ export default async function signUpThrottle(req: Request, res: Response, next: 
       throw new Error('Client IP is required');
     }
 
-    const key = `signUp:throttle:${clientIp}`;
+    let signType = 'others'; // signUp, signIn, others
+
+    if (req.originalUrl.includes('sign/up')) {
+      signType = 'signUp';
+    } else if (req.originalUrl.includes('sign/in')) {
+      signType = 'signIn';
+    }
+
+    const key = `${signType}:throttle:${clientIp}`;
     const currentCount = await get(key);
 
     if (currentCount && typeof currentCount === 'number' && currentCount >= maxRequestsPerMinute) {
@@ -35,8 +43,10 @@ export default async function signUpThrottle(req: Request, res: Response, next: 
 
     await incr(key);
     await expire(key, ipTtl);
+
+    next();
   } catch (e) {
-    debug.extend('signUpThrottle:error')(e);
+    debug.extend('signThrottle:error')(e);
     response.error(req, res, e as Error);
   }
 }

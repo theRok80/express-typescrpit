@@ -8,4 +8,7 @@ export default {
     },
     product: 'product',
   },
+  sign: {
+    log: 'logSign',
+  },
 };

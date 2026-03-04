@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as response from '../../tools/response';
-import * as manager from '../../managers/user';
+import * as manager from '../../managers/sign';
 
 function signUp(req: Request, res: Response) {
   manager

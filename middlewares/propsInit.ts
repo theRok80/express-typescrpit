@@ -49,8 +49,6 @@ export default function propsInit(req: Request, res: Response, next: NextFunctio
     req.clientIp = '0';
   }
 
-  console.log(req.clientIp);
-
   req.props = {
     headers: req.headers,
     body: req.body,

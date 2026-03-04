@@ -54,4 +54,9 @@ async function getProductData({ productId }: Pick<Product, 'productId'>) {
   }
 }
 
+async function addLogPaymentPrepare(props: Props) {
+  const { uuid } = props;
+  const {} = props?.requestParams;
+}
+
 export { addWebhookLog, getProductData };
