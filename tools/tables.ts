@@ -6,5 +6,6 @@ export default {
     log: {
       webhook: 'logWebhook',
     },
+    product: 'product',
   },
 };

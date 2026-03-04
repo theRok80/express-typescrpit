@@ -24,5 +24,13 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 const ENVIRONMENT = process.env.ENVIRONMENT || 'development';
+const PAYMENT_STATUS = {
+  PROCESSING: 1,
+  SUCCESS: 2,
+  FAILED: 3,
+  CANCELLED: 4,
+  REFUNDED: 5,
+  PENDING: 6,
+};
 
-export { dayjs, ENVIRONMENT };
+export { dayjs, ENVIRONMENT, PAYMENT_STATUS };

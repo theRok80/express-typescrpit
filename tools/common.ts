@@ -39,12 +39,12 @@ function jsonStringify(data: Record<string, unknown> | string): string {
  * @param data string or object
  * @returns
  */
-function jsonParse(data: string): Record<string, unknown> {
-  try {
+function jsonParse(data: string | Record<string, unknown>): Record<string, unknown> {
+  if (typeof data === 'string') {
     return JSON.parse(data);
-  } catch {
-    return {} as Record<string, unknown>;
   }
+
+  return data;
 }
 
 export { formValidationResult, jsonStringify, jsonParse };
