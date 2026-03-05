@@ -1,5 +1,7 @@
 import { PAYMENT_STATUS } from '../constants';
 import { Props } from '../types/props';
+import { User } from '../types/tables/user';
+import { LogPayment, Product } from '../types/tables/payment';
 import DEBUG from 'debug';
 import * as handler from '../handlers/payment';
 
@@ -16,10 +18,45 @@ async function prepare(props: Props) {
     }
 
     const orderId = await handler.getOrderId(props?.uuid);
+    const amount = await getAmountFromPrice({
+      userId: props?.requestParams?.userId,
+      productId: props?.requestParams?.productId,
+      price: productData.price,
+    });
 
     return orderId;
   } catch (e) {
     throw e;
+  }
+}
+
+/**
+ * 실제 가격에서 특정 조건에 따라 가격 변경이 일어날 경우 계산하여 반환
+ *
+ * @description Get amount from price
+ *
+ * @param {User['userId']} userId
+ * @param {Product['productId']} productId
+ * @param {Product['price']} price
+ * @returns {Promise<LogPayment['amount']>}
+ */
+async function getAmountFromPrice({
+  userId,
+  productId,
+  price,
+}: {
+  userId?: User['userId'];
+  productId?: Product['productId'];
+  price: Product['price'];
+}): Promise<LogPayment['amount']> {
+  try {
+    // 특정 조건들에 대한 처리를 추가
+    // 현재는 그대로 반환
+    return price;
+  } catch (e) {
+    // 에러가 발생하면 로깅하고 주문진행은 방해하지 않도록 원래 가격을 반환
+    debug.extend('getAmountFromPrice')(e);
+    return price;
   }
 }
 
