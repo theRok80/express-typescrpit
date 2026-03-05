@@ -5,7 +5,9 @@ export default {
   payment: {
     log: {
       webhook: 'logWebhook',
+      payment: 'logPayment',
     },
+    orderIdWarehouse: 'orderIdWarehouse',
     product: 'product',
   },
   sign: {

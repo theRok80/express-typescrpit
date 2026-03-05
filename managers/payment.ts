@@ -6,13 +6,21 @@ import * as handler from '../handlers/payment';
 const debug = DEBUG('dev.managers.payment');
 
 async function prepare(props: Props) {
-  const productData = await handler.getProductData(props?.requestParams);
+  try {
+    await handler.generateOrderId();
 
-  if (!productData) {
-    throw new Error('Product not found');
+    const productData = await handler.getProductData(props?.requestParams);
+
+    if (!productData) {
+      throw new Error('Product not found');
+    }
+
+    const orderId = await handler.getOrderId(props?.uuid);
+
+    return orderId;
+  } catch (e) {
+    throw e;
   }
-
-  return productData;
 }
 
 async function webhook(pg: string, props: Props) {

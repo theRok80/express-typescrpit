@@ -1,5 +1,3 @@
-import Debug from 'debug';
-const debug = Debug('DEV:constants');
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -31,6 +29,7 @@ const PAYMENT_STATUS = {
   CANCELLED: 4,
   REFUNDED: 5,
   PENDING: 6,
+  ERROR: 9,
 };
 const USER_TOKEN_TTL = 60 * 60 * 24 * 30; // 30 days
 const DEFAULT_TIMEZONE = 'Asia/Seoul';
@@ -39,6 +38,11 @@ const DATETIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 const DATE_FORMAT = 'YYYY-MM-DD';
 const CURRENT_DATETIME = CURRENT_DAY.format(DATETIME_FORMAT);
 const CURRENT_DATE = CURRENT_DAY.format(DATE_FORMAT);
+const ORDER_ID_STATUS = {
+  AVAILABLE: 0,
+  PROCESSING: 1,
+  USED: 2,
+};
 
 export {
   dayjs,
@@ -51,4 +55,5 @@ export {
   DATE_FORMAT,
   CURRENT_DATETIME,
   CURRENT_DATE,
+  ORDER_ID_STATUS,
 };

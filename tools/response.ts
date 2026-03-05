@@ -9,7 +9,7 @@ function success(req: Request, res: Response, data: any) {
   watcher(req, res, undefined, () => {
     res.status(200).json({
       uuid: req.props?.uuid,
-      ...data,
+      ...(typeof data === 'object' ? data : { data }),
     });
   });
 }

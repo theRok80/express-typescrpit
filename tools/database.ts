@@ -514,4 +514,32 @@ async function executeQuery(args: ExecuteQueryArgs) {
   }
 }
 
-export { master, masterPromise, slave, slavePromise, escape, executeQuery };
+function bulkQueryBuilder({
+  table,
+  columns,
+  values,
+  ignore = false,
+}: {
+  table: string;
+  columns: string[];
+  values: (string | number | Record<string, any>)[][];
+  ignore?: boolean;
+}): string {
+  const query = `INSERT ${ignore ? 'IGNORE' : ''} INTO \`${table}\` (\`${columns.join('`,`')}\`) VALUES `;
+  const valuesQuery = _.map(values, (v) => {
+    return `(${_.map(v, (c: string | number | unknown) => {
+      switch (typeof c) {
+        case 'string':
+          return c.toUpperCase() === 'NULL' ? 'NULL' : `'${c}'`;
+        case 'undefined':
+          return 'NUll';
+        default:
+          return c;
+      }
+    }).join(',')})`;
+  });
+
+  return query + valuesQuery.join(',');
+}
+
+export { master, masterPromise, slave, slavePromise, escape, executeQuery, bulkQueryBuilder };
