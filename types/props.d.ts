@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { AgentDetails } from 'express-useragent';
 import { PoolClient } from 'pg';
 import { ParamsDictionary } from './express';
+import { UserRedisData } from './sign';
 
 export interface Props {
   headers: IncomingHttpHeaders;
@@ -13,4 +14,5 @@ export interface Props {
   clientIp: string;
   useragent: AgentDetails;
   requestParams: Request['body'] & Request['query'] & ParamsDictionary;
+  tokenData?: UserRedisData;
 }

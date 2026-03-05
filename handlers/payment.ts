@@ -21,7 +21,7 @@ async function generateOrderId(): Promise<void> {
   try {
     const [rows] = await executeQuery({
       printName: 'payment.generateOrderId',
-      print: true,
+      //print: truie,
       table: tables.payment.orderIdWarehouse,
       action: 'select',
       where: {
@@ -38,7 +38,7 @@ async function generateOrderId(): Promise<void> {
 
       await executeQuery({
         printName: 'payment.generateOrderId',
-        print: true,
+        //print: truie,
         table: tables.payment.orderIdWarehouse,
         action: 'insert',
         query: bulkQueryBuilder({
@@ -64,7 +64,7 @@ async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderI
   try {
     const [rows] = await executeQuery({
       printName: 'payment.getOrderId.select',
-      print: true,
+      //print: truie,
       table: tables.payment.orderIdWarehouse,
       action: 'select',
       where: {
@@ -84,7 +84,7 @@ async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderI
 
       const [{ affectedRows }] = await executeQuery({
         printName: 'payment.getOrderId.update',
-        print: true,
+        //print: truie,
         table: tables.payment.orderIdWarehouse,
         action: 'update',
         set: {
@@ -122,7 +122,7 @@ async function addWebhookLog(props: Props) {
     try {
       await executeQuery({
         printName: 'payment.addWebhookLog',
-        print: true,
+        //print: truie,
         table: tables.payment.log.webhook,
         action: 'insert',
         set: {
@@ -146,7 +146,7 @@ async function getProductData({ productId }: Pick<Product, 'productId'>) {
   try {
     const [rows] = await executeQuery({
       printName: 'payment.getProductData',
-      print: true,
+      //print: truie,
       table: tables.payment.product,
       action: 'select',
       where: {
@@ -185,7 +185,7 @@ async function addLogPayment({
   try {
     const [{ affectedRows }] = await executeQuery({
       printName: 'payment.addLogPayment',
-      print: true,
+      //print: truie,
       table: tables.payment.log.payment,
       action: 'duplicate',
       set: {

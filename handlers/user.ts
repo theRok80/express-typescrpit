@@ -36,7 +36,7 @@ function makePasswordHash(password: string): string {
 async function isEmailExists(email: string): Promise<boolean> {
   const [rows] = await executeQuery({
     printName: 'user.isEmailExists',
-    print: true,
+    //print: truie,
     table: tables.user.main,
     action: 'select',
     where: {
@@ -71,7 +71,7 @@ async function createUser({
 
   const [{ insertId }] = await executeQuery({
     printName: 'user.createUser',
-    print: true,
+    //print: truie,
     table: tables.user.main,
     action: 'insert',
     set: { email, password: passwordHash, name, clientIp },
@@ -94,7 +94,7 @@ async function getUserByEmail({ email }: Pick<User, 'email'>): Promise<User | un
   try {
     const [rows] = await executeQuery({
       printName: 'user.getUserByEmail',
-      print: true,
+      //print: truie,
       table: tables.user.main,
       action: 'select',
       where: { email },
@@ -132,7 +132,7 @@ async function addLogSign({
   try {
     await executeQuery({
       printName: 'user.addLogSign',
-      print: true,
+      //print: truie,
       table: tables.sign.log,
       action: 'insert',
       set: {
@@ -161,7 +161,7 @@ async function getLiveSignTokens(email: string): Promise<LogSign[]> {
   try {
     const [rows] = await executeQuery({
       printName: 'user.getLiveSignTokens',
-      print: true,
+      //print: truie,
       table: tables.sign.log,
       action: 'select',
       where: {

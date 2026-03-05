@@ -1,7 +1,7 @@
 import Debug from 'debug';
 import { Props } from '../types/props';
 import { v4 } from 'uuid';
-import { SignInResponse } from '../types/sign';
+import { SignInResponse, UserRedisData } from '../types/sign';
 import * as userHandler from '../handlers/user';
 import * as redis from '../tools/redisCache';
 import { jsonStringify } from '../tools/common';
@@ -73,16 +73,13 @@ async function signIn(props: Props): Promise<SignInResponse> {
     await Promise.all(rows.map((row) => redis.remove(`user:token:${row.token}`)));
 
     const token = v4();
-    await redis.set(
-      `user:token:${token}`,
-      jsonStringify({
-        ...row,
-        signedInAt: CURRENT_DATETIME,
-      }),
-      USER_TOKEN_TTL
-    );
-
     const tokenExpiredAt = CURRENT_DAY.add(USER_TOKEN_TTL, 'seconds').format(DATETIME_FORMAT);
+    const userRedisData: UserRedisData = {
+      ...row,
+      signedInAt: CURRENT_DATETIME,
+      expiredAt: tokenExpiredAt,
+    };
+    await redis.set(`user:token:${token}`, jsonStringify(userRedisData), USER_TOKEN_TTL);
 
     await userHandler.addLogSign({
       type: 'signIn',
