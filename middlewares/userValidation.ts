@@ -23,8 +23,6 @@ export default async function userValidation(req: Request, res: Response, next: 
     if (userId && token) {
       const data = (await redis.get(`user:token:${token}`)) as UserRedisData;
 
-      console.log(data);
-
       if (!data) {
         return next();
       }
