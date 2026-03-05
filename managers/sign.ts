@@ -58,8 +58,6 @@ async function signIn(props: Props): Promise<SignInResponse> {
   try {
     const row = await userHandler.getUserByEmail({ email });
 
-    console.log(row);
-
     if (!row) {
       throw new Error('User not found');
     }
