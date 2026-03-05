@@ -111,12 +111,16 @@ async function addLogSign({
   type,
   props,
   result,
+  token,
   errorMessage,
+  expiredAt,
 }: {
   type: LogSign['type'];
   props: Props;
   result: LogSign['result'];
+  token?: LogSign['token'];
   errorMessage?: LogSign['errorMessage'];
+  expiredAt?: LogSign['expiredAt'];
 }): Promise<void> {
   const { uuid, clientIp } = props;
   const { email } = props.requestParams as Pick<User, 'email'>;
@@ -134,11 +138,13 @@ async function addLogSign({
       set: {
         uuid,
         email,
+        token,
         clientIp,
         type,
         result,
         errorMessage,
         createdAt: CURRENT_DATETIME,
+        expiredAt,
       },
     });
   } catch (e) {
@@ -147,4 +153,37 @@ async function addLogSign({
   }
 }
 
-export { makePasswordHash, isEmailExists, createUser, getUserByEmail, addLogSign };
+async function getLiveSignTokens(email: string): Promise<LogSign[]> {
+  if (!email) {
+    throw new Error('Email is required');
+  }
+
+  try {
+    const [rows] = await executeQuery({
+      printName: 'user.getLiveSignTokens',
+      print: true,
+      table: tables.sign.log,
+      action: 'select',
+      where: {
+        email,
+        type: 'signIn',
+        result: 'success',
+        statement: ['`token` IS NOT NULL', ` \`expiredAt\` > '${CURRENT_DATETIME}'`],
+      },
+    });
+
+    return rows as LogSign[];
+  } catch (e) {
+    debug.extend('getLiveSignTokens:error')(e);
+    throw e;
+  }
+}
+
+export {
+  makePasswordHash,
+  isEmailExists,
+  createUser,
+  getUserByEmail,
+  addLogSign,
+  getLiveSignTokens,
+};

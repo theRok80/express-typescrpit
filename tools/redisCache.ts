@@ -9,9 +9,7 @@ function keyName(key: string): string {
   if (key.includes(`${ENVIRONMENT}:`)) {
     return key;
   }
-
-  const replaceKey = key.replace(/\//g, ':').replace(/-/g, ':');
-  return ENVIRONMENT + ':' + replaceKey;
+  return ENVIRONMENT + ':' + key;
 }
 
 function keyNameWithoutSalt(key: string): string {

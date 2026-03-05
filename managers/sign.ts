@@ -5,7 +5,7 @@ import { SignInResponse } from '../types/sign';
 import * as userHandler from '../handlers/user';
 import * as redis from '../tools/redisCache';
 import { jsonStringify } from '../tools/common';
-import { USER_TOKEN_TTL, CURRENT_DATETIME } from '../constants';
+import { USER_TOKEN_TTL, CURRENT_DATETIME, CURRENT_DAY, DATETIME_FORMAT } from '../constants';
 
 const debug = Debug('dev:managers:user');
 
@@ -50,13 +50,12 @@ async function signUp(props: Props): ReturnType<typeof userHandler.createUser> {
  * @returns User ID
  */
 async function signIn(props: Props): Promise<SignInResponse> {
-  try {
-    console.log(props.requestParams);
+  const { email, password } = props.requestParams as {
+    email: string;
+    password: string;
+  };
 
-    const { email, password } = props.requestParams as {
-      email: string;
-      password: string;
-    };
+  try {
     const row = await userHandler.getUserByEmail({ email });
 
     console.log(row);
@@ -71,6 +70,10 @@ async function signIn(props: Props): Promise<SignInResponse> {
       throw new Error('Invalid password');
     }
 
+    // 이전 로그인 토큰 중 아직 만료 안된 것은 Redis에서 삭제
+    const rows = await userHandler.getLiveSignTokens(email);
+    await Promise.all(rows.map((row) => redis.remove(`user:token:${row.token}`)));
+
     const token = v4();
     await redis.set(
       `user:token:${token}`,
@@ -81,7 +84,15 @@ async function signIn(props: Props): Promise<SignInResponse> {
       USER_TOKEN_TTL
     );
 
-    await userHandler.addLogSign({ type: 'signIn', props, result: 'success' });
+    const tokenExpiredAt = CURRENT_DAY.add(USER_TOKEN_TTL, 'seconds').format(DATETIME_FORMAT);
+
+    await userHandler.addLogSign({
+      type: 'signIn',
+      props,
+      result: 'success',
+      token,
+      expiredAt: tokenExpiredAt,
+    });
 
     return {
       token,
