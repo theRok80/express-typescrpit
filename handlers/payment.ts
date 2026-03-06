@@ -21,7 +21,7 @@ async function generateOrderId(): Promise<void> {
   try {
     const [rows] = await executeQuery({
       printName: 'payment.generateOrderId',
-      //print: truie,
+      //print: true,
       table: tables.payment.orderIdWarehouse,
       action: 'select',
       where: {
@@ -38,7 +38,7 @@ async function generateOrderId(): Promise<void> {
 
       await executeQuery({
         printName: 'payment.generateOrderId',
-        //print: truie,
+        //print: true,
         table: tables.payment.orderIdWarehouse,
         action: 'insert',
         query: bulkQueryBuilder({
@@ -64,7 +64,7 @@ async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderI
   try {
     const [rows] = await executeQuery({
       printName: 'payment.getOrderId.select',
-      //print: truie,
+      //print: true,
       table: tables.payment.orderIdWarehouse,
       action: 'select',
       where: {
@@ -84,7 +84,7 @@ async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderI
 
       const [{ affectedRows }] = await executeQuery({
         printName: 'payment.getOrderId.update',
-        //print: truie,
+        //print: true,
         table: tables.payment.orderIdWarehouse,
         action: 'update',
         set: {
@@ -114,7 +114,7 @@ async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderI
   }
 }
 
-async function addWebhookLog(props: Props) {
+async function addWebhookLog(props: Props): Promise<void> {
   const { pg, orderId } = props.requestParams as Pick<LogWebhook, 'pg' | 'orderId'>;
   const data = jsonStringify(props?.body);
 
@@ -122,7 +122,7 @@ async function addWebhookLog(props: Props) {
     try {
       await executeQuery({
         printName: 'payment.addWebhookLog',
-        //print: truie,
+        //print: true,
         table: tables.payment.log.webhook,
         action: 'insert',
         set: {
@@ -138,7 +138,9 @@ async function addWebhookLog(props: Props) {
   }
 }
 
-async function getProductData({ productId }: Pick<Product, 'productId'>) {
+async function getProductData({
+  productId,
+}: Pick<Product, 'productId'>): Promise<Product | undefined> {
   if (!productId) {
     throw new Error('Product ID is required');
   }
@@ -146,7 +148,7 @@ async function getProductData({ productId }: Pick<Product, 'productId'>) {
   try {
     const [rows] = await executeQuery({
       printName: 'payment.getProductData',
-      //print: truie,
+      //print: true,
       table: tables.payment.product,
       action: 'select',
       where: {
@@ -161,11 +163,6 @@ async function getProductData({ productId }: Pick<Product, 'productId'>) {
   }
 }
 
-async function addLogPaymentPrepare(props: Props) {
-  const { uuid } = props;
-  const {} = props?.requestParams;
-}
-
 async function addLogPayment({
   uuid,
   orderId,
@@ -178,14 +175,14 @@ async function addLogPayment({
   status,
   errorMessage,
 }: Partial<LogPayment>): Promise<number> {
-  if (!uuid || !userId || !orderId) {
+  if (!uuid || !userId) {
     throw new Error('UUID and User ID are required');
   }
 
   try {
     const [{ affectedRows }] = await executeQuery({
       printName: 'payment.addLogPayment',
-      //print: truie,
+      //print: true,
       table: tables.payment.log.payment,
       action: 'duplicate',
       set: {
@@ -216,11 +213,31 @@ async function addLogPayment({
   }
 }
 
-export {
-  generateOrderId,
-  getOrderId,
-  addWebhookLog,
-  getProductData,
-  addLogPaymentPrepare,
-  addLogPayment,
-};
+async function getLogPayment(orderId: LogPayment['orderId']): Promise<LogPayment> {
+  if (!orderId) {
+    throw new Error('Order ID is required');
+  }
+
+  try {
+    const [rows] = await executeQuery({
+      printName: 'payment.getLogPayment',
+      print: true,
+      table: tables.payment.log.payment,
+      action: 'select',
+      where: {
+        orderId,
+      },
+    });
+
+    if (!rows?.length) {
+      throw new Error('Log payment not found');
+    }
+
+    return rows?.[0] as LogPayment;
+  } catch (e) {
+    debug.extend('getLogPayment')(e);
+    throw e;
+  }
+}
+
+export { generateOrderId, getOrderId, addWebhookLog, getProductData, addLogPayment, getLogPayment };

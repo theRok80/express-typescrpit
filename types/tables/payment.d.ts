@@ -25,18 +25,18 @@ export interface Product {
   updatedAt: Date;
 }
 
-export interface LogPaymentPrepare {
-  uuid: string;
-  userId: number;
-  orderId: string;
-  productId: number;
-  pg: string;
-  method: string;
-  amount: number;
-  status: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// export interface LogPaymentPrepare {
+//   uuid: string;
+//   userId: number;
+//   orderId: string;
+//   productId: number;
+//   pg: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
+//   method: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
+//   amount: number;
+//   status: number;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
 
 export interface LogPayment {
   uuid: Props['uuid'];
@@ -45,8 +45,8 @@ export interface LogPayment {
   productId: Product['productId'];
   price: Product['price'];
   amount: number;
-  pg: string;
-  method: string;
+  pg: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
+  method: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
   status: (typeof PAYMENT_STATUS)[keyof typeof PAYMENT_STATUS];
   errorMessage?: string;
   createdAt: Date;

@@ -43,6 +43,10 @@ const ORDER_ID_STATUS = {
   PROCESSING: 1,
   USED: 2,
 };
+const PAYMENT_PG = {
+  stripe: ['card', 'apple', 'google'],
+};
+const AVAILABLE_PAYMENT_PG = Object.keys(PAYMENT_PG);
 
 export {
   dayjs,
@@ -56,4 +60,6 @@ export {
   CURRENT_DATETIME,
   CURRENT_DATE,
   ORDER_ID_STATUS,
+  PAYMENT_PG,
+  AVAILABLE_PAYMENT_PG,
 };

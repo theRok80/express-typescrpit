@@ -9,6 +9,7 @@ const debug = Debug('dev:middlewares:userValidation');
 /**
  * 현재 요청에 포함된 유저 토큰의 유효성을 검사
  * 유저 토큰을 검증을 위해서 요청헤더에는 토큰이 존재하는 경우 user-id 값을 필수로 포함하도록 설계
+ * 유저 활동 시 유저 토큰 만료 시간을 갱신하고 싶다면 여기서 처리
  *
  * @param req
  * @param res

@@ -4,10 +4,21 @@ import { User } from '../types/tables/user';
 import { LogPayment, Product } from '../types/tables/payment';
 import DEBUG from 'debug';
 import * as handler from '../handlers/payment';
+import { AVAILABLE_PAYMENT_PG } from '../constants';
+import { PaymentStatus } from '../types/variables';
+import { Manager } from '../types/Payment';
 
 const debug = DEBUG('dev.managers.payment');
 
-async function prepare(props: Props) {
+async function prepare(props: Props): Promise<LogPayment['orderId']> {
+  const { uuid } = props;
+  const { pg, method, productId } = props?.requestParams as {
+    pg: (typeof AVAILABLE_PAYMENT_PG)[keyof typeof AVAILABLE_PAYMENT_PG];
+    method: string;
+    productId: Product['productId'];
+  };
+  const userId = props?.tokenData?.userId;
+
   try {
     await handler.generateOrderId();
 
@@ -17,15 +28,36 @@ async function prepare(props: Props) {
       throw new Error('Product not found');
     }
 
-    const orderId = await handler.getOrderId(props?.uuid);
+    const orderId = await handler.getOrderId(uuid);
     const amount = await getAmountFromPrice({
-      userId: props?.requestParams?.userId,
-      productId: props?.requestParams?.productId,
+      userId,
+      productId,
       price: productData.price,
+    });
+
+    await handler.addLogPayment({
+      uuid,
+      orderId,
+      userId,
+      productId,
+      price: productData.price,
+      amount,
+      pg,
+      method,
+      status: PAYMENT_STATUS.PROCESSING,
     });
 
     return orderId;
   } catch (e) {
+    await handler.addLogPayment({
+      uuid,
+      userId,
+      productId,
+      pg,
+      method,
+      status: PAYMENT_STATUS.ERROR,
+      errorMessage: e instanceof Error ? e.message : 'Unknown error',
+    });
     throw e;
   }
 }
@@ -64,7 +96,7 @@ async function webhook(pg: string, props: Props) {
   try {
     switch (pg) {
       case 'stripe':
-        return stripe.webhook(props);
+        return STRIPE.webhook(props);
       default:
         throw new Error('Invalid PG');
     }
@@ -80,32 +112,68 @@ async function webhook(pg: string, props: Props) {
  *
  * @description Stripe webhook manager
  */
-const stripe = {
-  webhook: async (props: Props) => {
-    const thisStatus = stripe.setOrderStatus(props?.requestParams?.orderStatus);
-  },
-  setOrderStatus: function (status: string): number {
-    switch (status) {
+const STRIPE: Manager.Stripe = {
+  async webhook(props: Props) {
+    const orderId = props?.requestParams?.orderId as LogPayment['orderId'];
+    const userId = props?.requestParams?.userId as User['userId'];
+    const requestStatus = props?.requestParams?.orderStatus;
+
+    let status: PaymentStatus;
+    switch (requestStatus) {
       case 'pending':
-        return PAYMENT_STATUS.PENDING;
+        status = PAYMENT_STATUS.PENDING;
       case 'success':
-        return PAYMENT_STATUS.SUCCESS;
+        status = PAYMENT_STATUS.SUCCESS;
       case 'failed':
-        return PAYMENT_STATUS.FAILED;
+        status = PAYMENT_STATUS.FAILED;
       case 'cancelled':
-        return PAYMENT_STATUS.CANCELLED;
+        status = PAYMENT_STATUS.CANCELLED;
       case 'refunded':
-        return PAYMENT_STATUS.REFUNDED;
+        status = PAYMENT_STATUS.REFUNDED;
       default:
-        throw new Error('Invalid status');
+        status = PAYMENT_STATUS.ERROR;
+    }
+
+    const logPayment = await handler.getLogPayment(orderId);
+
+    if (status === PAYMENT_STATUS.SUCCESS) {
+      return STRIPE.success({
+        ...props,
+        requestParams: { ...props.requestParams, status, userId, orderId },
+      });
+    }
+
+    if (status === PAYMENT_STATUS.REFUNDED) {
+      return STRIPE.refunded({
+        ...props,
+        requestParams: { ...props.requestParams, status, userId, orderId },
+      });
+    }
+
+    // 그 외 상태는 일괄적으로 상태값만 다르고 동일하게 처리
+    return STRIPE.failed({
+      ...props,
+      requestParams: { ...props.requestParams, status, userId, orderId },
+    });
+  },
+  success: async function (props: Props) {
+    try {
+    } catch (e) {
+      debug.extend('STRIPE.success:error')(e);
+      // await handler.addLogPayment({
+      //   uuid: props.uuid,
+      //   orderId: props.requestParams.orderId,
+      //   userId: props.tokenData.userId,
+      //   productId: props.requestParams.productId,
+      //   pg: 'stripe',
+      //   method: props.requestParams.method,
+      //   status: PAYMENT_STATUS.ERROR,
+      // });
+      throw e;
     }
   },
-  success: async function () {},
-  failed: async function () {},
-  cancelled: async function () {},
-  refunded: async function () {},
-  pending: async function () {},
-  processing: async function () {},
+  failed: async function (props: Props) {},
+  refunded: async function (props: Props) {},
 };
 
 export { prepare, webhook };
