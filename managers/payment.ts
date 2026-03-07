@@ -7,6 +7,7 @@ import * as handler from '../handlers/payment';
 import { AVAILABLE_PAYMENT_PG } from '../constants';
 import { PaymentStatus } from '../types/variables';
 import { Manager } from '../types/Payment';
+import { getErrorMessage } from '../tools/common';
 
 const debug = DEBUG('dev.managers.payment');
 
@@ -56,7 +57,7 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
       pg,
       method,
       status: PAYMENT_STATUS.ERROR,
-      errorMessage: e instanceof Error ? e.message : 'Unknown error',
+      errorMessage: getErrorMessage(e),
     });
     throw e;
   }
@@ -199,7 +200,7 @@ const STRIPE: Manager.Stripe = {
       await handler.updateWebhookLog({
         id: webhookLogId,
         status: PAYMENT_STATUS.ERROR,
-        result: e instanceof Error ? e.message : 'Unknown error',
+        result: getErrorMessage(e),
       });
 
       // log payment 업데이트
@@ -211,7 +212,7 @@ const STRIPE: Manager.Stripe = {
         pg: STRIPE.name,
         method: logPayment?.method,
         status: PAYMENT_STATUS.ERROR,
-        errorMessage: e instanceof Error ? e.message : 'Unknown error',
+        errorMessage: getErrorMessage(e),
       });
       throw e;
     }

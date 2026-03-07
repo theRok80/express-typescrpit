@@ -11,7 +11,10 @@ function formValidationResult(req: Request, res: Response, next: NextFunction) {
 
   if (!errors.isEmpty()) {
     // 에러 확인은 내부만 가능하도록
-    if (process.env?.ENVIRONMENT !== 'production' || isLocalhost(req.clientIp)) {
+    if (
+      process.env?.ENVIRONMENT !== 'production' ||
+      isLocalhost(req.clientIp)
+    ) {
       return response.notValid(req, res, errors.array());
     }
     return response.sendStatus(req, res, 400);
@@ -46,4 +49,11 @@ function jsonParse(data: string | object): object {
   return data;
 }
 
-export { formValidationResult, jsonStringify, jsonParse };
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return error?.toString() || (error as string);
+}
+
+export { formValidationResult, jsonStringify, jsonParse, getErrorMessage };

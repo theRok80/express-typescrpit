@@ -4,8 +4,13 @@ import { v4 } from 'uuid';
 import { SignInResponse, UserRedisData } from '../types/sign';
 import * as userHandler from '../handlers/user';
 import * as redis from '../tools/redisCache';
-import { jsonStringify } from '../tools/common';
-import { USER_TOKEN_TTL, CURRENT_DATETIME, CURRENT_DAY, DATETIME_FORMAT } from '../constants';
+import { getErrorMessage, jsonStringify } from '../tools/common';
+import {
+  USER_TOKEN_TTL,
+  CURRENT_DATETIME,
+  CURRENT_DAY,
+  DATETIME_FORMAT,
+} from '../constants';
 
 const debug = Debug('dev:managers:user');
 
@@ -37,7 +42,7 @@ async function signUp(props: Props): ReturnType<typeof userHandler.createUser> {
       type: 'signUp',
       props,
       result: 'failed',
-      errorMessage: e instanceof Error ? e.message : 'Unknown error',
+      errorMessage: getErrorMessage(e),
     });
     throw e;
   }
@@ -70,16 +75,22 @@ async function signIn(props: Props): Promise<SignInResponse> {
 
     // 이전 로그인 토큰 중 아직 만료 안된 것은 Redis에서 삭제
     const rows = await userHandler.getLiveSignTokens(email);
-    await Promise.all(rows.map((row) => redis.remove(`user:token:${row.token}`)));
+    await Promise.all(rows.map(row => redis.remove(`user:token:${row.token}`)));
 
     const token = v4();
-    const tokenExpiredAt = CURRENT_DAY.add(USER_TOKEN_TTL, 'seconds').format(DATETIME_FORMAT);
+    const tokenExpiredAt = CURRENT_DAY.add(USER_TOKEN_TTL, 'seconds').format(
+      DATETIME_FORMAT,
+    );
     const userRedisData: UserRedisData = {
       ...row,
       signedInAt: CURRENT_DATETIME,
       expiredAt: tokenExpiredAt,
     };
-    await redis.set(`user:token:${token}`, jsonStringify(userRedisData), USER_TOKEN_TTL);
+    await redis.set(
+      `user:token:${token}`,
+      jsonStringify(userRedisData),
+      USER_TOKEN_TTL,
+    );
 
     await userHandler.addLogSign({
       type: 'signIn',
@@ -101,7 +112,7 @@ async function signIn(props: Props): Promise<SignInResponse> {
       type: 'signIn',
       props,
       result: 'failed',
-      errorMessage: e instanceof Error ? e.message : 'Unknown error',
+      errorMessage: getErrorMessage(e),
     });
     throw e;
   }
