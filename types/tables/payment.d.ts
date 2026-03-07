@@ -14,6 +14,15 @@ export interface LogWebhook {
   pg: string;
   orderId: string;
   data: string;
+  status: (typeof PAYMENT_STATUS)[keyof typeof PAYMENT_STATUS];
+  result: string;
+  createdAt: Date;
+}
+
+export interface WorkWebhook {
+  orderId: LogPayment['orderId'];
+  data: string;
+  pg: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
   createdAt: Date;
 }
 

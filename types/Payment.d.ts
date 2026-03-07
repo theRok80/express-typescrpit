@@ -4,7 +4,8 @@ import { PaymentStatus } from './variables';
 export namespace Handler {}
 export namespace Manager {
   export interface Stripe {
-    webhook(props: Props): Promise<void>;
+    name: 'stripe';
+    webhook(props: Props): Promise<{ message: string }>;
     success(props: Props): Promise<void>;
     failed(props: Props): Promise<void>;
     refunded(props: Props): Promise<void>;

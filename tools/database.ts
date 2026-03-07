@@ -84,25 +84,29 @@ function buildCondition(args: BuildConditionArgs): string[] {
             array.push(value);
           }
         } else if (key === 'bulkWhere') {
-          if (Array.isArray(value?.columns) && Array.isArray(value?.keys) && value?.data) {
+          if (
+            Array.isArray(value?.columns) &&
+            Array.isArray(value?.keys) &&
+            value?.data
+          ) {
             let string = `(${value.columns.join(',')})`;
             const values = _.compact(
-              _.map(value.data, (o) => {
+              _.map(value.data, o => {
                 const innerValues = _.compact(
                   _.map(o, (p, key) => {
                     if (value.keys.includes(key)) {
                       return p;
                     }
                     return null;
-                  })
+                  }),
                 );
                 if (innerValues.length) {
-                  return `(${_.map(innerValues, (o) => {
+                  return `(${_.map(innerValues, o => {
                     return escape(o);
                   }).join(',')})`;
                 }
                 return null;
-              })
+              }),
             );
             if (values.length) {
               string += ` IN (${values.join(',')})`;
@@ -111,9 +115,9 @@ function buildCondition(args: BuildConditionArgs): string[] {
           }
         } else if (Array.isArray(value)) {
           array.push(
-            `${tablePrefix}\`${key}\` IN (${_.map(value, (o) => {
+            `${tablePrefix}\`${key}\` IN (${_.map(value, o => {
               return escape(o);
-            }).join(',')})`
+            }).join(',')})`,
           );
         } else if (_.isInteger(value)) {
           if (isDuplicate) {
@@ -130,7 +134,7 @@ function buildCondition(args: BuildConditionArgs): string[] {
             array.push(`${tablePrefix}\`${key}\` = ${escape(value)}`);
           } else if (value instanceof Date) {
             array.push(
-              `${tablePrefix}\`${key}\` = '${dayjs(value).utc().format('YYYY-MM-DD HH:mm:ss')}'`
+              `${tablePrefix}\`${key}\` = '${dayjs(value).utc().format('YYYY-MM-DD HH:mm:ss')}'`,
             );
           } else {
             array.push(`${tablePrefix}\`${key}\` = null`);
@@ -162,7 +166,7 @@ function queryBuilder(
   index?: string,
   join?: Join,
   tableAs?: string,
-  isSubQuery = false
+  isSubQuery = false,
 ) {
   let query = '';
   let arrQuery: string[] = [];
@@ -174,7 +178,7 @@ function queryBuilder(
       if (!params) {
         throw new Error('params is undefined');
       }
-      query += `INSERT INTO ${getTableName(table)} SET `;
+      query += `INSERT INTO${newLine}${indent}${getTableName(table)}${newLine}SET${newLine}${indent}`;
 
       arrQuery = buildCondition({ condition: params });
 
@@ -183,11 +187,11 @@ function queryBuilder(
       }
 
       if (arrQuery.length) {
-        query += arrQuery.join(', ');
+        query += arrQuery.join(`,${newLine}${indent}`);
 
         if (arrSecQuery.length) {
           query += ' ON DUPLICATE KEY UPDATE ';
-          query += arrSecQuery.join(', ');
+          query += arrSecQuery.join(`,${newLine}${indent}`);
         }
       } else {
         query = '';
@@ -197,7 +201,7 @@ function queryBuilder(
       if (!params) {
         throw new Error('params is undefined');
       }
-      query += `INSERT IGNORE INTO ${getTableName(table)} SET `;
+      query += `INSERT IGNORE INTO${newLine}${indent}${getTableName(table)}${newLine}SET${newLine}${indent}`;
 
       arrQuery = buildCondition({ condition: params });
       if (secParams) {
@@ -205,11 +209,11 @@ function queryBuilder(
       }
 
       if (arrQuery.length) {
-        query += arrQuery.join(', ');
+        query += arrQuery.join(`,${newLine}${indent}`);
 
         if (arrSecQuery.length) {
           query += ' ON DUPLICATE KEY UPDATE ';
-          query += arrSecQuery.join(', ');
+          query += arrSecQuery.join(`,${newLine}${indent}`);
         }
       } else {
         query = '';
@@ -230,7 +234,7 @@ function queryBuilder(
       if (!arrQuery.length || !arrSecQuery.length) {
         // query = '';
       } else {
-        query += `UPDATE${newLine}${indent}${getTableName(table)}${newLine}SET`;
+        query += `UPDATE${newLine}${indent}${getTableName(table)}${newLine}SET${newLine}${indent}`;
         query += `${newLine}${indent}${arrQuery.join(`,${newLine}${indent}`)} `;
         query += `${newLine}WHERE${newLine}${indent}${arrSecQuery.join(`${newLine}${indent}AND `)}`;
       }
@@ -246,7 +250,7 @@ function queryBuilder(
         // query = '';
       } else {
         query += `DELETE FROM ${getTableName(table)} `;
-        query += ` WHERE ${arrQuery.join(' AND ')}`;
+        query += ` WHERE${newLine}${indent}${arrQuery.join(`${newLine}${indent}AND `)}`;
       }
       break;
     case 'select':
@@ -254,7 +258,7 @@ function queryBuilder(
         throw new Error('params is undefined');
       }
 
-      _.forEach(select, (v) => {
+      _.forEach(select, v => {
         if (typeof v === 'object') {
           const [columnName] = Object.keys(v);
           const [columnAlias] = Object.values(v);
@@ -279,7 +283,7 @@ function queryBuilder(
         }
 
         if (Array.isArray(join)) {
-          _.forEach(join, (v) => {
+          _.forEach(join, v => {
             if (!v) {
               return;
             }
@@ -315,7 +319,7 @@ function queryBuilder(
       if (!params) {
         throw new Error('params is undefined');
       }
-      query += `INSERT INTO ${getTableName(table)} SET `;
+      query += `INSERT INTO${newLine}${indent}${getTableName(table)}${newLine}SET${newLine}${indent}`;
 
       arrQuery = buildCondition({ condition: params });
       if (secParams) {
@@ -323,9 +327,9 @@ function queryBuilder(
       }
 
       if (arrQuery.length && arrSecQuery.length) {
-        query += arrQuery.join(', ');
-        query += ' ON DUPLICATE KEY UPDATE ';
-        query += arrSecQuery.join(', ');
+        query += arrQuery.join(`,${newLine}${indent}`);
+        query += `${newLine}ON DUPLICATE KEY UPDATE${newLine}${indent}`;
+        query += arrSecQuery.join(`,${newLine}${indent}`);
       } else {
         query = '';
       }
@@ -395,7 +399,7 @@ function queryBuilderV2(args: QueryBuilder2Args): string {
     index,
     join,
     tableAs,
-    isSubQuery
+    isSubQuery,
   );
 }
 
@@ -436,16 +440,25 @@ async function executeQuery(args: ExecuteQueryArgs) {
 
     if (query) {
       let db;
-      if (['insert', 'ignore', 'duplicate', 'update', 'delete'].includes(action) || masterConn) {
+      if (
+        ['insert', 'ignore', 'duplicate', 'update', 'delete'].includes(
+          action,
+        ) ||
+        masterConn
+      ) {
         checkMaster = true;
 
         db =
-          masterConn && masterConn?.connection?.connectionId && tryCount < newConnectionCount
+          masterConn &&
+          masterConn?.connection?.connectionId &&
+          tryCount < newConnectionCount
             ? masterConn
             : master.promise();
       } else {
         db =
-          slaveConn && slaveConn?.connection?.connectionId && tryCount < newConnectionCount
+          slaveConn &&
+          slaveConn?.connection?.connectionId &&
+          tryCount < newConnectionCount
             ? slaveConn
             : slave.promise();
       }
@@ -462,7 +475,7 @@ async function executeQuery(args: ExecuteQueryArgs) {
           printName || '',
           _.compact(printDescription).join(', '),
           'BEGIN',
-          `${newLine}${query}${newLine}`
+          `${newLine}${query}${newLine}`,
         );
       }
 
@@ -473,16 +486,12 @@ async function executeQuery(args: ExecuteQueryArgs) {
       const queryResult = await db?.query(query);
 
       if (isPrint) {
-        DEBUG('%O', printName || '', _.compact(printDescription).join(', '), 'DONE');
-      }
-
-      if (
-        (verbose || print) &&
-        process.env.ENVIRONMENT === 'development' &&
-        !slaveConn &&
-        !masterConn
-      ) {
-        DEBUG('%O', printName || '', 'CONNECTION UNDEFINED');
+        DEBUG(
+          '%O',
+          printName || '',
+          _.compact(printDescription).join(', '),
+          'DONE',
+        );
       }
 
       return queryResult;
@@ -491,7 +500,12 @@ async function executeQuery(args: ExecuteQueryArgs) {
     }
   } catch (e) {
     if (e instanceof Error) {
-      debug.extend('executeQuery:error')('', printName || '', e.message, tryCount);
+      debug.extend('executeQuery:error')(
+        '',
+        printName || '',
+        e.message,
+        tryCount,
+      );
 
       if (!e?.message.includes('connection is in closed state')) {
         // console.trace('executeQuery.error', e.message);
@@ -526,7 +540,7 @@ function bulkQueryBuilder({
   ignore?: boolean;
 }): string {
   const query = `INSERT ${ignore ? 'IGNORE' : ''} INTO \`${table}\` (\`${columns.join('`,`')}\`) VALUES `;
-  const valuesQuery = _.map(values, (v) => {
+  const valuesQuery = _.map(values, v => {
     return `(${_.map(v, (c: string | number | unknown) => {
       switch (typeof c) {
         case 'string':
@@ -542,4 +556,12 @@ function bulkQueryBuilder({
   return query + valuesQuery.join(',');
 }
 
-export { master, masterPromise, slave, slavePromise, escape, executeQuery, bulkQueryBuilder };
+export {
+  master,
+  masterPromise,
+  slave,
+  slavePromise,
+  escape,
+  executeQuery,
+  bulkQueryBuilder,
+};

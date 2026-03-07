@@ -3,7 +3,12 @@ import { Props } from '../types/props';
 import { jsonStringify } from '../tools/common';
 import { bulkQueryBuilder, executeQuery } from '../tools/database';
 import tables from '../tools/tables';
-import { LogWebhook, Product, LogPayment, OrderIdWarehouse } from '../types/tables/payment';
+import {
+  LogWebhook,
+  Product,
+  LogPayment,
+  OrderIdWarehouse,
+} from '../types/tables/payment';
 import { ORDER_ID_STATUS } from '../constants';
 
 const debug = DEBUG('dev.handlers.payment');
@@ -55,7 +60,9 @@ async function generateOrderId(): Promise<void> {
   }
 }
 
-async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderId']> {
+async function getOrderId(
+  uuid: Props['uuid'],
+): Promise<OrderIdWarehouse['orderId']> {
   // Request 에 부여하는 UUID 를 필수로 처리하여 어떤 Request 에서 사용되었는지 같이 기록
   if (!uuid) {
     throw new Error('UUID is required');
@@ -114,27 +121,75 @@ async function getOrderId(uuid: Props['uuid']): Promise<OrderIdWarehouse['orderI
   }
 }
 
-async function addWebhookLog(props: Props): Promise<void> {
-  const { pg, orderId } = props.requestParams as Pick<LogWebhook, 'pg' | 'orderId'>;
+async function addWebhookLog(
+  props: Props,
+): Promise<LogWebhook['id'] | undefined> {
+  const { pg, orderId } = props.requestParams as Pick<
+    LogWebhook,
+    'pg' | 'orderId'
+  >;
   const data = jsonStringify(props?.body);
 
   if (pg && orderId) {
     try {
-      await executeQuery({
-        printName: 'payment.addWebhookLog',
-        //print: true,
-        table: tables.payment.log.webhook,
-        action: 'insert',
-        set: {
-          pg,
-          orderId,
-          data,
-        },
-      });
+      const [[{ insertId: logId }]] = await Promise.all([
+        // log
+        await executeQuery({
+          printName: 'payment.addWebhookLog',
+          //print: true,
+          table: tables.payment.log.webhook,
+          action: 'ignore',
+          set: {
+            pg,
+            orderId,
+            data,
+          },
+        }),
+
+        // work
+        await executeQuery({
+          printName: 'payment.addWebhookLog',
+          //print: true,
+          table: tables.payment.work.webhook,
+          action: 'ignore',
+          set: {
+            pg,
+            orderId,
+            data,
+          },
+        }),
+      ]);
+
+      return logId as LogWebhook['id'] | undefined;
     } catch (e) {
       debug.extend('addWebhookLog')(e);
       throw e;
     }
+  }
+}
+
+async function updateWebhookLog({ id, status, result }: Partial<LogWebhook>) {
+  if (!id || !status) {
+    return;
+  }
+
+  try {
+    await executeQuery({
+      printName: 'payment.updateWebhookLog',
+      // print: true,
+      table: tables.payment.log.webhook,
+      action: 'update',
+      set: {
+        status,
+        result,
+      },
+      where: {
+        id,
+      },
+    });
+  } catch (e) {
+    debug.extend('updateWebhookLog')(e);
+    throw e;
   }
 }
 
@@ -163,7 +218,7 @@ async function getProductData({
   }
 }
 
-async function addLogPayment({
+async function setLogPayment({
   uuid,
   orderId,
   userId,
@@ -181,8 +236,8 @@ async function addLogPayment({
 
   try {
     const [{ affectedRows }] = await executeQuery({
-      printName: 'payment.addLogPayment',
-      //print: true,
+      printName: 'payment.setLogPayment',
+      // print: true,
       table: tables.payment.log.payment,
       action: 'duplicate',
       set: {
@@ -208,12 +263,14 @@ async function addLogPayment({
 
     return affectedRows;
   } catch (e) {
-    debug.extend('addLogPayment')(e);
+    debug.extend('setLogPayment')(e);
     throw e;
   }
 }
 
-async function getLogPayment(orderId: LogPayment['orderId']): Promise<LogPayment> {
+async function getLogPayment(
+  orderId: LogPayment['orderId'],
+): Promise<LogPayment> {
   if (!orderId) {
     throw new Error('Order ID is required');
   }
@@ -221,7 +278,7 @@ async function getLogPayment(orderId: LogPayment['orderId']): Promise<LogPayment
   try {
     const [rows] = await executeQuery({
       printName: 'payment.getLogPayment',
-      print: true,
+      // print: true,
       table: tables.payment.log.payment,
       action: 'select',
       where: {
@@ -240,4 +297,36 @@ async function getLogPayment(orderId: LogPayment['orderId']): Promise<LogPayment
   }
 }
 
-export { generateOrderId, getOrderId, addWebhookLog, getProductData, addLogPayment, getLogPayment };
+async function removeWorkWebhook({
+  orderId,
+}: Pick<LogWebhook, 'orderId'>): Promise<void> {
+  if (!orderId) {
+    return; // 주문번호가 없으면 처리하지 않음
+  }
+
+  try {
+    await executeQuery({
+      printName: 'payment.removeWorkWebhook',
+      print: true,
+      table: tables.payment.work.webhook,
+      action: 'delete',
+      where: {
+        orderId,
+      },
+    });
+  } catch (e) {
+    debug.extend('removeWorkWebhook')(e);
+    throw e;
+  }
+}
+
+export {
+  generateOrderId,
+  getOrderId,
+  addWebhookLog,
+  updateWebhookLog,
+  getProductData,
+  setLogPayment,
+  getLogPayment,
+  removeWorkWebhook,
+};

@@ -4,6 +4,9 @@ import * as response from '../tools/response';
 
 export default (req: Request, res: Response, next: NextFunction) => {
   addWebhookLog(req.props)
-    .then(() => next())
-    .catch((e) => response.error(req, res, e));
+    .then(logId => {
+      req.props.webhookLogId = logId;
+      next();
+    })
+    .catch(e => response.error(req, res, e));
 };

@@ -1,7 +1,7 @@
 import { PAYMENT_STATUS } from '../constants';
 import { Props } from '../types/props';
 import { User } from '../types/tables/user';
-import { LogPayment, Product } from '../types/tables/payment';
+import { LogPayment, LogWebhook, Product } from '../types/tables/payment';
 import DEBUG from 'debug';
 import * as handler from '../handlers/payment';
 import { AVAILABLE_PAYMENT_PG } from '../constants';
@@ -35,7 +35,7 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
       price: productData.price,
     });
 
-    await handler.addLogPayment({
+    await handler.setLogPayment({
       uuid,
       orderId,
       userId,
@@ -49,7 +49,7 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
 
     return orderId;
   } catch (e) {
-    await handler.addLogPayment({
+    await handler.setLogPayment({
       uuid,
       userId,
       productId,
@@ -113,67 +113,121 @@ async function webhook(pg: string, props: Props) {
  * @description Stripe webhook manager
  */
 const STRIPE: Manager.Stripe = {
-  async webhook(props: Props) {
+  name: 'stripe',
+  async webhook(props: Props): Promise<{ message: string }> {
     const orderId = props?.requestParams?.orderId as LogPayment['orderId'];
-    const userId = props?.requestParams?.userId as User['userId'];
     const requestStatus = props?.requestParams?.orderStatus;
+    const webhookLogId = props?.webhookLogId as LogWebhook['id'];
 
+    // PG 별 응답코드에 따라 처리할 상태값 설정
     let status: PaymentStatus;
     switch (requestStatus) {
       case 'pending':
         status = PAYMENT_STATUS.PENDING;
+        break;
       case 'success':
         status = PAYMENT_STATUS.SUCCESS;
+        break;
       case 'failed':
         status = PAYMENT_STATUS.FAILED;
+        break;
       case 'cancelled':
         status = PAYMENT_STATUS.CANCELLED;
+        break;
       case 'refunded':
         status = PAYMENT_STATUS.REFUNDED;
       default:
-        status = PAYMENT_STATUS.ERROR;
+        throw new Error('Invalid status');
     }
 
     const logPayment = await handler.getLogPayment(orderId);
+    const userId = logPayment?.userId;
 
-    if (status === PAYMENT_STATUS.SUCCESS) {
-      return STRIPE.success({
-        ...props,
-        requestParams: { ...props.requestParams, status, userId, orderId },
-      });
-    }
+    const newRequestParams = {
+      ...props.requestParams,
+      status,
+      orderId,
+      logData: logPayment,
+    };
 
-    if (status === PAYMENT_STATUS.REFUNDED) {
-      return STRIPE.refunded({
-        ...props,
-        requestParams: { ...props.requestParams, status, userId, orderId },
-      });
-    }
-
-    // 그 외 상태는 일괄적으로 상태값만 다르고 동일하게 처리
-    return STRIPE.failed({
-      ...props,
-      requestParams: { ...props.requestParams, status, userId, orderId },
-    });
-  },
-  success: async function (props: Props) {
     try {
+      if (status === PAYMENT_STATUS.SUCCESS) {
+        await STRIPE.success({
+          ...props,
+          requestParams: newRequestParams,
+        });
+      } else if (status === PAYMENT_STATUS.REFUNDED) {
+        await STRIPE.refunded({
+          ...props,
+          requestParams: newRequestParams,
+        });
+      } else {
+        // 그 외 상태는 일괄적으로 상태값만 다르고 동일하게 처리
+        // 이 후 별도의 처리가 필요한 경우 분리처리 필요
+        await STRIPE.failed({
+          ...props,
+          requestParams: newRequestParams,
+        });
+      }
+
+      // log webhook 업데이트
+      await handler.updateWebhookLog({
+        id: webhookLogId,
+        status,
+      });
+
+      // 주문 상태 업데이트
+      const { uuid, orderId, userId, productId, pg, method } = logPayment;
+      await handler.setLogPayment({
+        uuid,
+        orderId,
+        userId,
+        productId,
+        pg,
+        method,
+        status,
+      });
+
+      // 정상 처리 되었으므로 work webhook 제거
+      await handler.removeWorkWebhook({ orderId });
+
+      return { message: 'done' };
     } catch (e) {
-      debug.extend('STRIPE.success:error')(e);
-      // await handler.addLogPayment({
-      //   uuid: props.uuid,
-      //   orderId: props.requestParams.orderId,
-      //   userId: props.tokenData.userId,
-      //   productId: props.requestParams.productId,
-      //   pg: 'stripe',
-      //   method: props.requestParams.method,
-      //   status: PAYMENT_STATUS.ERROR,
-      // });
+      debug.extend('STRIPE.webhook:error')(e);
+
+      // log webhook 업데이트
+      await handler.updateWebhookLog({
+        id: webhookLogId,
+        status: PAYMENT_STATUS.ERROR,
+        result: e instanceof Error ? e.message : 'Unknown error',
+      });
+
+      // log payment 업데이트
+      await handler.setLogPayment({
+        uuid: logPayment?.uuid,
+        orderId,
+        userId,
+        productId: logPayment?.productId,
+        pg: STRIPE.name,
+        method: logPayment?.method,
+        status: PAYMENT_STATUS.ERROR,
+        errorMessage: e instanceof Error ? e.message : 'Unknown error',
+      });
       throw e;
     }
   },
-  failed: async function (props: Props) {},
-  refunded: async function (props: Props) {},
+  success: async function (props: Props): Promise<void> {
+    // 상품 구성에 따른 처리
+    // 구성 상품 지급 등에 대한 처리
+    // TEST
+    throw new Error('test');
+  },
+  failed: async function (props: Props): Promise<void> {
+    // 실패 시 처리 부분
+  },
+  refunded: async function (props: Props): Promise<void> {
+    // 환불 시 지급 회수등에 대한 처리
+  },
 };
 
 export { prepare, webhook };

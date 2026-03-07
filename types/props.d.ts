@@ -15,4 +15,5 @@ export interface Props {
   useragent: AgentDetails;
   requestParams: Request['body'] & Request['query'] & ParamsDictionary;
   tokenData?: UserRedisData;
+  webhookLogId?: LogWebhook['id']; // 결제 관련 웹훅 로그 ID
 }
