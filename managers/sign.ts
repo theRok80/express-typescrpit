@@ -78,12 +78,12 @@ async function signIn(props: Props): Promise<SignInResponse> {
     await Promise.all(rows.map(row => redis.remove(`user:token:${row.token}`)));
 
     const token = v4();
-    const tokenExpiredAt = CURRENT_DAY.add(USER_TOKEN_TTL, 'seconds').format(
+    const tokenExpiredAt = CURRENT_DAY().add(USER_TOKEN_TTL, 'seconds').format(
       DATETIME_FORMAT,
     );
     const userRedisData: UserRedisData = {
       ...row,
-      signedInAt: CURRENT_DATETIME,
+      signedInAt: CURRENT_DATETIME(),
       expiredAt: tokenExpiredAt,
     };
     await redis.set(

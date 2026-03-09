@@ -143,7 +143,7 @@ async function addLogSign({
         type,
         result,
         errorMessage,
-        createdAt: CURRENT_DATETIME,
+        createdAt: CURRENT_DATETIME(),
         expiredAt,
       },
     });
@@ -168,7 +168,7 @@ async function getLiveSignTokens(email: string): Promise<LogSign[]> {
         email,
         type: 'signIn',
         result: 'success',
-        statement: ['`token` IS NOT NULL', ` \`expiredAt\` > '${CURRENT_DATETIME}'`],
+        statement: ['`token` IS NOT NULL', ` \`expiredAt\` > '${CURRENT_DATETIME()}'`],
       },
     });
 

@@ -34,18 +34,15 @@ export interface Product {
   updatedAt: Date;
 }
 
-// export interface LogPaymentPrepare {
-//   uuid: string;
-//   userId: number;
-//   orderId: string;
-//   productId: number;
-//   pg: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
-//   method: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
-//   amount: number;
-//   status: number;
-//   createdAt: Date;
-//   updatedAt: Date;
-// }
+export interface ProductCoin {
+  productId: Product['productId'];
+  coin: number;
+  coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE];
+  periodValue: number;
+  periodUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
 
 export interface LogPayment {
   uuid: Props['uuid'];
@@ -60,4 +57,13 @@ export interface LogPayment {
   errorMessage?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface LogPaymentCoin {
+  orderId: LogPayment['orderId'];
+  coin: ProductCoin['coin'];
+  coinType: ProductCoin['coinType'];
+  periodValue: ProductCoin['periodValue'];
+  periodUnit: ProductCoin['periodUnit'];
+  createdAt: Date | string;
 }

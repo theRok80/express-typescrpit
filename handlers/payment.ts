@@ -1,4 +1,5 @@
 import DEBUG from 'debug';
+import { Handler } from '../types/Payment';
 import { Props } from '../types/props';
 import { jsonStringify } from '../tools/common';
 import { bulkQueryBuilder, executeQuery } from '../tools/database';
@@ -8,10 +9,12 @@ import {
   Product,
   LogPayment,
   OrderIdWarehouse,
+  ProductCoin,
+  LogPaymentCoin,
 } from '../types/tables/payment';
 import { ORDER_ID_STATUS } from '../constants';
 
-const debug = DEBUG('dev.handlers.payment');
+const debug = DEBUG('dev:handlers:payment');
 
 const orderIdMinimumCount = 100;
 
@@ -195,23 +198,44 @@ async function updateWebhookLog({ id, status, result }: Partial<LogWebhook>) {
 
 async function getProductData({
   productId,
-}: Pick<Product, 'productId'>): Promise<Product | undefined> {
+}: Pick<Product, 'productId'>): Promise<Handler.GetProductData> {
   if (!productId) {
     throw new Error('Product ID is required');
   }
 
   try {
-    const [rows] = await executeQuery({
-      printName: 'payment.getProductData',
-      //print: true,
-      table: tables.payment.product,
-      action: 'select',
-      where: {
-        productId,
-      },
-    });
+    const [[mainRows], [coinRows]] = await Promise.all([
+      // main
+      await executeQuery({
+        printName: 'payment.getProductData.main',
+        //print: true,
+        table: tables.payment.product.main,
+        action: 'select',
+        where: {
+          productId,
+        },
+      }),
 
-    return rows?.[0] as Product | undefined;
+      // coin
+      await executeQuery({
+        printName: 'payment.getProductData.coin',
+        //print: true,
+        table: tables.payment.product.coin,
+        action: 'select',
+        where: {
+          productId,
+        },
+      }),
+    ]);
+
+    if (!mainRows?.length || !coinRows?.length) {
+      throw new Error('Product not found');
+    }
+
+    return {
+      ...(mainRows?.[0] as Product),
+      coins: coinRows as ProductCoin[],
+    } as Handler.GetProductData;
   } catch (e) {
     debug.extend('getProductData')(e);
     throw e;
@@ -268,6 +292,43 @@ async function setLogPayment({
   }
 }
 
+async function setLogPaymentCoin({
+  orderId,
+  coins,
+}: Pick<LogPayment, 'orderId'> & { coins: ProductCoin[] }): Promise<void> {
+  if (
+    !orderId ||
+    !coins?.length ||
+    !coins?.[0]?.coin ||
+    !coins?.[0]?.coinType
+  ) {
+    throw new Error('Order ID and coins are required');
+  }
+
+  try {
+    await Promise.all(
+      coins.map(o => {
+        return executeQuery({
+          printName: 'payment.setLogPaymentCoin',
+          print: true,
+          table: tables.payment.log.paymentCoin,
+          action: 'insert',
+          set: {
+            orderId,
+            coin: o.coin,
+            coinType: o.coinType,
+            periodValue: o.periodValue,
+            periodUnit: o.periodUnit,
+          },
+        });
+      }),
+    );
+  } catch (e) {
+    debug.extend('setLogPaymentCoin')(e);
+    throw e;
+  }
+}
+
 async function getLogPayment(
   orderId: LogPayment['orderId'],
 ): Promise<LogPayment> {
@@ -293,6 +354,35 @@ async function getLogPayment(
     return rows?.[0] as LogPayment;
   } catch (e) {
     debug.extend('getLogPayment')(e);
+    throw e;
+  }
+}
+
+async function getLogPaymentCoin(
+  orderId: LogPayment['orderId'],
+): Promise<LogPaymentCoin[]> {
+  if (!orderId) {
+    throw new Error('Order ID is required');
+  }
+
+  try {
+    const [rows] = await executeQuery({
+      printName: 'payment.getLogPaymentCoin',
+      // print: true,
+      table: tables.payment.log.paymentCoin,
+      action: 'select',
+      where: {
+        orderId,
+      },
+    });
+
+    if (!rows?.length) {
+      throw new Error('Log payment coin not found');
+    }
+
+    return rows as LogPaymentCoin[];
+  } catch (e) {
+    debug.extend('getLogPaymentCoin')(e);
     throw e;
   }
 }
@@ -327,6 +417,8 @@ export {
   updateWebhookLog,
   getProductData,
   setLogPayment,
+  setLogPaymentCoin,
   getLogPayment,
+  getLogPaymentCoin,
   removeWorkWebhook,
 };

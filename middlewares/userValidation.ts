@@ -28,7 +28,7 @@ export default async function userValidation(req: Request, res: Response, next: 
         return next();
       }
 
-      if (data.expiredAt < CURRENT_DATETIME) {
+      if (data.expiredAt < CURRENT_DATETIME()) {
         return next();
       }
 

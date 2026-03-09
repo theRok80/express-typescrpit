@@ -1,4 +1,4 @@
-import { PAYMENT_STATUS } from '../constants';
+import { CURRENT_DATETIME, dayjs, PAYMENT_STATUS } from '../constants';
 import { Props } from '../types/props';
 import { User } from '../types/tables/user';
 import { LogPayment, LogWebhook, Product } from '../types/tables/payment';
@@ -8,8 +8,9 @@ import { AVAILABLE_PAYMENT_PG } from '../constants';
 import { PaymentStatus } from '../types/variables';
 import { Manager } from '../types/Payment';
 import { getErrorMessage } from '../tools/common';
+import * as coinManager from './coin';
 
-const debug = DEBUG('dev.managers.payment');
+const debug = DEBUG('dev:managers:payment');
 
 async function prepare(props: Props): Promise<LogPayment['orderId']> {
   const { uuid } = props;
@@ -24,10 +25,6 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
     await handler.generateOrderId();
 
     const productData = await handler.getProductData(props?.requestParams);
-
-    if (!productData) {
-      throw new Error('Product not found');
-    }
 
     const orderId = await handler.getOrderId(uuid);
     const amount = await getAmountFromPrice({
@@ -46,6 +43,11 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
       pg,
       method,
       status: PAYMENT_STATUS.PROCESSING,
+    });
+
+    await handler.setLogPaymentCoin({
+      orderId,
+      coins: productData.coins,
     });
 
     return orderId;
@@ -153,8 +155,14 @@ const STRIPE: Manager.Stripe = {
 
     try {
       if (status === PAYMENT_STATUS.SUCCESS) {
+        // 이미 처리된 주문
+        if (logPayment.status === PAYMENT_STATUS.SUCCESS) {
+          return { message: 'already processed' };
+        }
+
         await STRIPE.success({
           ...props,
+          successDatetime: CURRENT_DATETIME(), // 처리 시간을 통일하기 위해 현재 시간 사용
           requestParams: newRequestParams,
         });
       } else if (status === PAYMENT_STATUS.REFUNDED) {
@@ -194,8 +202,7 @@ const STRIPE: Manager.Stripe = {
 
       return { message: 'done' };
     } catch (e) {
-      debug.extend('STRIPE.webhook:error')(e);
-
+      debug.extend('STRIPE:webhook:error')(e);
       // log webhook 업데이트
       await handler.updateWebhookLog({
         id: webhookLogId,
@@ -217,8 +224,25 @@ const STRIPE: Manager.Stripe = {
       throw e;
     }
   },
-  success: async function (props: Props): Promise<void> {
+  success: async function (
+    props: Props & { successDatetime: Date | string },
+  ): Promise<void> {
+    const orderId = props?.requestParams?.logData
+      ?.orderId as LogPayment['orderId'];
+    const successDatetime = props?.successDatetime as Date | string;
+    const userId = props?.requestParams?.logData
+      ?.userId as LogPayment['userId'];
+
     // 상품 구성에 따른 처리
+    const logPaymentCoin = await handler.getLogPaymentCoin(orderId);
+    await coinManager.reserve({
+      userId,
+      coins: logPaymentCoin,
+      relationType: 'payment',
+      relationId: orderId,
+      currentDatetime: successDatetime,
+    });
+
     // 구성 상품 지급 등에 대한 처리
     // TEST
     throw new Error('test');

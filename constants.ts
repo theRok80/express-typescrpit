@@ -33,11 +33,17 @@ const PAYMENT_STATUS = {
 };
 const USER_TOKEN_TTL = 60 * 60 * 24 * 30; // 30 days
 const DEFAULT_TIMEZONE = 'Asia/Seoul';
-const CURRENT_DAY = dayjs().tz(DEFAULT_TIMEZONE);
+const CURRENT_DAY = function (): dayjs.Dayjs {
+  return dayjs().tz(DEFAULT_TIMEZONE);
+};
 const DATETIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 const DATE_FORMAT = 'YYYY-MM-DD';
-const CURRENT_DATETIME = CURRENT_DAY.format(DATETIME_FORMAT);
-const CURRENT_DATE = CURRENT_DAY.format(DATE_FORMAT);
+const CURRENT_DATETIME = function (): string {
+  return CURRENT_DAY().format(DATETIME_FORMAT);
+};
+const CURRENT_DATE = function (): string {
+  return CURRENT_DAY().format(DATE_FORMAT);
+};
 const ORDER_ID_STATUS = {
   AVAILABLE: 0,
   PROCESSING: 1,
@@ -47,6 +53,11 @@ const PAYMENT_PG = {
   stripe: ['card', 'apple', 'google'],
 };
 const AVAILABLE_PAYMENT_PG = Object.keys(PAYMENT_PG);
+const COIN_TYPE = {
+  NORMAL: 1,
+  BONUS: 2,
+  PROMOTION: 3,
+};
 
 export {
   dayjs,
@@ -62,4 +73,5 @@ export {
   ORDER_ID_STATUS,
   PAYMENT_PG,
   AVAILABLE_PAYMENT_PG,
+  COIN_TYPE,
 };
