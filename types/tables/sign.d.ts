@@ -1,5 +1,6 @@
 import { User } from './user';
 import { Props } from '../props';
+import { Datetime } from '../variables';
 
 export interface LogSign {
   uuid: Props['uuid'];
@@ -9,6 +10,6 @@ export interface LogSign {
   type: 'signIn' | 'signUp';
   result: 'success' | 'failed';
   errorMessage?: string;
-  createdAt: Date;
-  expiredAt?: Date | string;
+  createdAt: Datetime;
+  expiredAt?: Datetime;
 }

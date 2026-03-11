@@ -4,6 +4,7 @@
 
 import { User } from './user';
 import { COIN_TYPE } from '../../constants';
+import { Datetime } from '../variables';
 
 /**
  * 코인 충전 로그
@@ -16,8 +17,8 @@ export interface LogCoinReserve {
   coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE];
   relationType: string; // 해당 row의 생성 원인을 추적할 수 있는 타입
   relationId: string | number; // 해당 row의 생성 원인을 추적할 수 있는 아이디
-  expiredAt?: Date | string; // 코인 만료 시간
-  createdAt: Date | string;
+  expiredAt?: Datetime; // 코인 만료 시간
+  createdAt: Datetime;
 }
 
 /**
@@ -31,7 +32,7 @@ export interface LogCoinReduce {
   coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE];
   relationType: string; // 해당 row의 생성 원인을 추적할 수 있는 타입
   relationId: string | number; // 해당 row의 생성 원인을 추적할 수 있는 아이디
-  createdAt: Date | string;
+  createdAt: Datetime;
 }
 
 /**
@@ -47,7 +48,7 @@ export interface WorkCoin {
   coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE]; // primary key
   relationType: LogCoinReserve['relationType'];
   relationId: LogCoinReserve['relationId'];
-  expiredAt: Date | string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  expiredAt: Datetime;
+  createdAt: Datetime;
+  updatedAt: Datetime;
 }

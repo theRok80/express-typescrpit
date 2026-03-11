@@ -171,7 +171,12 @@ async function addWebhookLog(
   }
 }
 
-async function updateWebhookLog({ id, status, result }: Partial<LogWebhook>) {
+async function updateWebhookLog({
+  id,
+  status,
+  result,
+  updatedAt,
+}: Partial<LogWebhook>) {
   if (!id || !status) {
     return;
   }
@@ -185,6 +190,7 @@ async function updateWebhookLog({ id, status, result }: Partial<LogWebhook>) {
       set: {
         status,
         result,
+        updatedAt,
       },
       where: {
         id,
@@ -253,6 +259,7 @@ async function setLogPayment({
   method,
   status,
   errorMessage,
+  updatedAt,
 }: Partial<LogPayment>): Promise<number> {
   if (!uuid || !userId) {
     throw new Error('UUID and User ID are required');
@@ -275,6 +282,7 @@ async function setLogPayment({
         method,
         status,
         errorMessage,
+        updatedAt,
       },
       duplicate: {
         amount,
@@ -282,6 +290,7 @@ async function setLogPayment({
         method,
         status,
         errorMessage,
+        updatedAt,
       },
     });
 

@@ -1,12 +1,13 @@
 import { Props } from '../props';
 import { PAYMENT_STATUS } from '../../constants';
+import { Datetime } from '../variables';
 
 export interface OrderIdWarehouse {
   orderId: string;
   status: (typeof ORDER_ID_STATUS)[keyof typeof ORDER_ID_STATUS];
   uuid?: Props['uuid'];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Datetime;
+  updatedAt: Datetime;
 }
 
 export interface LogWebhook {
@@ -16,22 +17,23 @@ export interface LogWebhook {
   data: string;
   status: (typeof PAYMENT_STATUS)[keyof typeof PAYMENT_STATUS];
   result: string;
-  createdAt: Date;
+  createdAt: Datetime;
+  updatedAt: Datetime;
 }
 
 export interface WorkWebhook {
   orderId: LogPayment['orderId'];
   data: string;
   pg: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
-  createdAt: Date;
+  createdAt: Datetime;
 }
 
 export interface Product {
   productId: number;
   name: string;
   price: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Datetime;
+  updatedAt: Datetime;
 }
 
 export interface ProductCoin {
@@ -40,8 +42,8 @@ export interface ProductCoin {
   coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE];
   periodValue: number;
   periodUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Datetime;
+  updatedAt: Datetime;
 }
 
 export interface LogPayment {
@@ -55,8 +57,8 @@ export interface LogPayment {
   method: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
   status: (typeof PAYMENT_STATUS)[keyof typeof PAYMENT_STATUS];
   errorMessage?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Datetime;
+  updatedAt: Datetime;
 }
 
 export interface LogPaymentCoin {
@@ -65,5 +67,5 @@ export interface LogPaymentCoin {
   coinType: ProductCoin['coinType'];
   periodValue: ProductCoin['periodValue'];
   periodUnit: ProductCoin['periodUnit'];
-  createdAt: Date | string;
+  createdAt: Datetime;
 }

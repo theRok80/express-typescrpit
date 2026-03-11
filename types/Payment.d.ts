@@ -16,3 +16,8 @@ export namespace Manager {
     refunded(props: Props): Promise<void>;
   }
 }
+
+export type PaymentPg = (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];
+
+export type PaymentStatus =
+  (typeof PAYMENT_STATUS)[keyof typeof PAYMENT_STATUS];

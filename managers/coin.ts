@@ -12,6 +12,16 @@ import { executeQuery } from '../tools/database';
 
 const debug = DEBUG('dev:managers:coin');
 
+/**
+ * 코인 충전 처리
+ * relationType 과 relationId 조합별로 coinType 은 중복 불가, 중복처리 방지
+ *
+ * @param userId 사용자 아이디
+ * @param coins 충전 코인 정보
+ * @param relationType 관련 타입
+ * @param relationId 관련 아이디
+ * @param currentDatetime 현재 시간
+ */
 async function reserve({
   userId,
   coins,
@@ -25,10 +35,10 @@ async function reserve({
       periodValue?: ProductCoin['periodValue'];
       periodUnit?: ProductCoin['periodUnit'];
     })[];
-  relationType: LogCoinReserve['relationType'];
-  relationId: LogCoinReserve['relationId'];
+  relationType?: LogCoinReserve['relationType'];
+  relationId?: LogCoinReserve['relationId'];
   currentDatetime?: Date | string;
-}) {
+}): Promise<void> {
   if (!userId || !coins?.length) {
     throw new Error('userId and coins are required');
   }
@@ -136,7 +146,36 @@ async function reserve({
     throw e;
   }
 }
-async function reduce() {}
+
+async function reduce({
+  userId,
+  coins,
+  relationType,
+  relationId,
+}: {
+  userId: User['userId'];
+  coins: (Record<string, any> &
+    Pick<ProductCoin, 'coin' | 'coinType'> & {
+      periodValue?: ProductCoin['periodValue'];
+      periodUnit?: ProductCoin['periodUnit'];
+    })[];
+} & Pick<LogCoinReserve, 'relationType' | 'relationId'>) {
+  if (!userId || !coins?.length) {
+    throw new Error('userId and coins are required');
+  }
+
+  try {
+    await Promise.all(
+      coins.map(async coinObj => {
+        const { coin, coinType } = coinObj;
+      }),
+    );
+  } catch (e) {
+    debug.extend('reduce:error')(e);
+    throw e;
+  }
+}
+
 async function expire() {}
 
 export { reserve, reduce, expire };
