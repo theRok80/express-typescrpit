@@ -3,7 +3,7 @@
  */
 
 import { User } from './user';
-import { COIN_TYPE } from '../../constants';
+import { COIN_TYPE, WORK_COIN_STATUS } from '../../constants';
 import { Datetime } from '../variables';
 
 /**
@@ -48,6 +48,7 @@ export interface WorkCoin {
   coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE]; // primary key
   relationType: LogCoinReserve['relationType'];
   relationId: LogCoinReserve['relationId'];
+  status: (typeof WORK_COIN_STATUS)[keyof typeof WORK_COIN_STATUS];
   expiredAt: Datetime;
   createdAt: Datetime;
   updatedAt: Datetime;

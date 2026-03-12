@@ -1,4 +1,9 @@
-import { CURRENT_DATETIME, dayjs, PAYMENT_STATUS } from '../constants';
+import {
+  CURRENT_DATETIME,
+  dayjs,
+  PAYMENT_STATUS,
+  WORK_COIN_STATUS,
+} from '../constants';
 import { Props } from '../types/props';
 import { User } from '../types/tables/user';
 import { LogPayment, LogWebhook, Product } from '../types/tables/payment';
@@ -7,7 +12,7 @@ import * as handler from '../handlers/payment';
 import { AVAILABLE_PAYMENT_PG } from '../constants';
 import { Manager, PaymentPg, PaymentStatus } from '../types/Payment';
 import { getErrorMessage } from '../tools/common';
-import * as coinManager from './coin';
+import * as coinHandler from '../handlers/coin';
 
 const debug = DEBUG('dev:managers:payment');
 
@@ -109,19 +114,25 @@ function getOrderStatus(
     case 'stripe':
       const orderId = props?.requestParams?.orderId as LogPayment['orderId'];
       const requestStatus = props?.requestParams?.orderStatus;
+
       let status: PaymentStatus;
       // PG 별 응답코드에 따라 처리할 상태값 설정
       switch (requestStatus) {
         case 'pending':
           status = PAYMENT_STATUS.PENDING;
+          break;
         case 'success':
           status = PAYMENT_STATUS.SUCCESS;
+          break;
         case 'failed':
           status = PAYMENT_STATUS.FAILED;
+          break;
         case 'cancelled':
           status = PAYMENT_STATUS.CANCELLED;
+          break;
         case 'refunded':
           status = PAYMENT_STATUS.REFUNDED;
+          break;
         default:
           throw new Error('Invalid status');
       }
@@ -167,6 +178,7 @@ async function success({
     throw new Error('orderId is required');
   }
 
+  const newStatus = PAYMENT_STATUS.SUCCESS;
   const paymentLog = await handler.getLogPayment(orderId);
   const { userId, status, uuid, productId, pg, method } = paymentLog;
 
@@ -180,7 +192,7 @@ async function success({
   try {
     // 상품 구성에 따른 처리
     const logPaymentCoin = await handler.getLogPaymentCoin(orderId);
-    await coinManager.reserve({
+    await coinHandler.reserve({
       userId,
       coins: logPaymentCoin,
       relationType: 'payment',
@@ -191,7 +203,7 @@ async function success({
     // log webhook 업데이트
     await handler.updateWebhookLog({
       id: webhookLogId,
-      status,
+      status: newStatus,
       updatedAt: currentDatetime,
     });
 
@@ -203,7 +215,7 @@ async function success({
       productId,
       pg,
       method,
-      status,
+      status: newStatus,
       updatedAt: currentDatetime,
     });
 
@@ -256,7 +268,63 @@ async function refunded({
     throw new Error('Invalid status');
   }
 
-  return { message: 'done' };
+  try {
+    // 코인 처리를 위해 workCoin 상태를 사용불가로 변경
+    const affectedRows = await coinHandler.updateWorkCoinStatus({
+      userId,
+      relationType: 'payment',
+      relationId: orderId,
+      status: WORK_COIN_STATUS.UNAVAILABLE,
+    });
+
+    if (!affectedRows) {
+      throw new Error('Failed to update work coin status to unavailable');
+    }
+
+    // 코인 적립 로그 조회
+    const workLogs = await coinHandler.getWorkCoinLogsByRelation({
+      userId,
+      relationType: 'payment',
+      relationId: orderId,
+      status: WORK_COIN_STATUS.UNAVAILABLE,
+    });
+
+    if (!workLogs?.length) {
+      throw new Error('Work logs not found');
+    }
+
+    await coinHandler.deleteWorkCoin({
+      userId,
+      workLogs,
+      relationType: 'refunded',
+      relationId: webhookLogId,
+    });
+
+    // log webhook 업데이트
+    await handler.updateWebhookLog({
+      id: webhookLogId,
+      status: PAYMENT_STATUS.REFUNDED,
+    });
+
+    // 주문 상태 업데이트
+    await handler.setLogPayment({
+      uuid,
+      orderId,
+      userId,
+      productId,
+      pg,
+      method,
+      status: PAYMENT_STATUS.REFUNDED,
+    });
+
+    // 정상 처리 되었으므로 work webhook 제거
+    await handler.removeWorkWebhook({ orderId });
+
+    return { message: 'done' };
+  } catch (e) {
+    debug.extend('refunded:error')(e);
+    throw e;
+  }
 }
 
 async function failed({

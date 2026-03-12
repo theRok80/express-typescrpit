@@ -58,6 +58,10 @@ const COIN_TYPE = {
   BONUS: 2,
   PROMOTION: 3,
 };
+const WORK_COIN_STATUS = {
+  UNAVAILABLE: 0,
+  AVAILABLE: 1,
+};
 
 export {
   dayjs,
@@ -74,4 +78,5 @@ export {
   PAYMENT_PG,
   AVAILABLE_PAYMENT_PG,
   COIN_TYPE,
+  WORK_COIN_STATUS,
 };

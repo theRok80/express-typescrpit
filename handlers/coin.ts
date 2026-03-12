@@ -4,13 +4,14 @@
  */
 import { ProductCoin } from '../types/tables/payment';
 import { User } from '../types/tables/user';
-import { LogCoinReserve } from '../types/tables/coin';
+import { LogCoinReduce, LogCoinReserve, WorkCoin } from '../types/tables/coin';
+import { WorkCoinForReduce } from '../types/coin';
 import DEBUG from 'debug';
 import { dayjs, DATETIME_FORMAT } from '../constants';
 import tables from '../tools/tables';
 import { executeQuery } from '../tools/database';
 
-const debug = DEBUG('dev:managers:coin');
+const debug = DEBUG('dev:handlers:coin');
 
 /**
  * 코인 충전 처리
@@ -147,35 +148,182 @@ async function reserve({
   }
 }
 
+/**
+ * 코인 차감처리
+ * 적립과는 다르게 relationType 과 relationId 는 필수로 입력필요, 차감의 근거
+ *
+ * @param userId 사용자 아이디
+ * @param workLogs 차감 대상 로그 정보
+ * @param relationType 관련 타입
+ * @param relationId 관련 아이디
+ */
 async function reduce({
   userId,
-  coins,
+  workLogs,
   relationType,
   relationId,
 }: {
   userId: User['userId'];
-  coins: (Record<string, any> &
-    Pick<ProductCoin, 'coin' | 'coinType'> & {
-      periodValue?: ProductCoin['periodValue'];
-      periodUnit?: ProductCoin['periodUnit'];
-    })[];
+  workLogs: WorkCoinForReduce[];
 } & Pick<LogCoinReserve, 'relationType' | 'relationId'>) {
-  if (!userId || !coins?.length) {
-    throw new Error('userId and coins are required');
+  // if (!userId || !workLogs?.length) {
+  //   throw new Error('userId and coins are required');
+  // }
+  // try {
+  //   await Promise.all(
+  //     workLogs.map(log => {
+  //       return executeQuery();
+  //     }),
+  //   );
+  // } catch (e) {
+  //   debug.extend('reduce:error')(e);
+  //   throw e;
+  // }
+}
+
+/**
+ * 코인 지급 내역을 삭제
+ */
+async function deleteWorkCoin({
+  userId,
+  workLogs,
+  relationType,
+  relationId,
+}: Pick<WorkCoin, 'userId'> & {
+  workLogs: WorkCoin[];
+} & Pick<LogCoinReduce, 'relationType' | 'relationId'>): Promise<void> {
+  if (!userId || !workLogs?.length || !relationType || !relationId) {
+    throw new Error(
+      'userId, workLogs, relationType and relationId are required',
+    );
   }
 
   try {
     await Promise.all(
-      coins.map(async coinObj => {
-        const { coin, coinType } = coinObj;
+      workLogs.map(async log => {
+        const { reserveId, remains, coinType } = log;
+        await executeQuery({
+          printName: 'coin.deleteWorkCoin.insertReduceLog',
+          // print: true,
+          table: tables.coin.log.reduce,
+          action: 'insert',
+          set: {
+            reserveId,
+            userId,
+            coin: remains,
+            coinType,
+            relationType,
+            relationId,
+          },
+        });
+
+        await executeQuery({
+          printName: 'coin.deleteWorkCoin.delete',
+          print: true,
+          table: tables.coin.work,
+          action: 'delete',
+          where: {
+            userId,
+            reserveId,
+            relationType,
+            relationId,
+          },
+        });
       }),
     );
   } catch (e) {
-    debug.extend('reduce:error')(e);
+    debug.extend('deleteWorkCoin:error')(e);
     throw e;
   }
 }
 
 async function expire() {}
 
-export { reserve, reduce, expire };
+async function getWorkCoinLogsByRelation({
+  userId,
+  relationType,
+  relationId,
+  status,
+}: Partial<WorkCoin>): Promise<WorkCoin[]> {
+  if (!userId || !relationType || !relationId) {
+    throw new Error('userId, relationType and relationId are required');
+  }
+
+  try {
+    const [rows] = await executeQuery({
+      printName: 'coin.getWorkCoinLogsByRelation',
+      // print: true,
+      table: tables.coin.work,
+      action: 'select',
+      where: {
+        userId,
+        relationType,
+        relationId,
+        status,
+      },
+    });
+
+    return rows as WorkCoin[];
+  } catch (e) {
+    debug.extend('getWorkCoinLogsByRelation:error')(e);
+    throw e;
+  }
+}
+
+async function updateWorkCoinStatus({
+  userId,
+  reserveId,
+  relationType,
+  relationId,
+  status,
+}: Partial<WorkCoin>): Promise<number> {
+  debug.extend('updateWorkCoinStatus')({
+    userId,
+    reserveId,
+    relationType,
+    relationId,
+    status,
+  });
+
+  if (
+    !userId ||
+    (!reserveId && (!relationType || !relationId)) ||
+    typeof status === 'undefined'
+  ) {
+    throw new Error(
+      'userId, reserveId, relationType and relationId and status are required',
+    );
+  }
+
+  try {
+    const [{ affectedRows }] = await executeQuery({
+      printName: 'coin.updateWorkCoinStatus',
+      // print: true,
+      table: tables.coin.work,
+      action: 'update',
+      set: {
+        status,
+      },
+      where: {
+        userId,
+        reserveId,
+        relationType,
+        relationId,
+      },
+    });
+
+    return affectedRows;
+  } catch (e) {
+    debug.extend('updateWorkCoinStatus:error')(e);
+    throw e;
+  }
+}
+
+export {
+  reserve,
+  reduce,
+  expire,
+  getWorkCoinLogsByRelation,
+  updateWorkCoinStatus,
+  deleteWorkCoin,
+};
