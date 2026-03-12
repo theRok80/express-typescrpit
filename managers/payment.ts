@@ -1,6 +1,5 @@
 import {
   CURRENT_DATETIME,
-  dayjs,
   PAYMENT_STATUS,
   WORK_COIN_STATUS,
 } from '../constants';
@@ -10,7 +9,7 @@ import { LogPayment, LogWebhook, Product } from '../types/tables/payment';
 import DEBUG from 'debug';
 import * as handler from '../handlers/payment';
 import { AVAILABLE_PAYMENT_PG } from '../constants';
-import { Manager, PaymentPg, PaymentStatus } from '../types/Payment';
+import { PaymentPg, PaymentStatus } from '../types/Payment';
 import { getErrorMessage } from '../tools/common';
 import * as coinHandler from '../handlers/coin';
 
@@ -336,7 +335,50 @@ async function failed({
   webhookLogId: LogWebhook['id'];
   status: PaymentStatus;
 }) {
-  return { message: 'done' };
+  if (!orderId) {
+    throw new Error('orderId is required');
+  }
+
+  const paymentLog = await handler.getLogPayment(orderId);
+  const {
+    userId,
+    status: currentStatus,
+    uuid,
+    productId,
+    pg,
+    method,
+  } = paymentLog;
+
+  if (currentStatus === PAYMENT_STATUS.SUCCESS) {
+    return { message: 'already processed' };
+  }
+
+  try {
+    // log webhook 업데이트
+    await handler.updateWebhookLog({
+      id: webhookLogId,
+      status,
+    });
+
+    // 주문 상태 업데이트
+    await handler.setLogPayment({
+      uuid,
+      orderId,
+      userId,
+      productId,
+      pg,
+      method,
+      status,
+    });
+
+    // 정상 처리 되었으므로 work webhook 제거
+    await handler.removeWorkWebhook({ orderId });
+
+    return { message: 'done' };
+  } catch (e) {
+    debug.extend('failed:error')(e);
+    throw e;
+  }
 }
 
 export { prepare, webhook };

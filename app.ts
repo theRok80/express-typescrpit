@@ -23,6 +23,7 @@ import v1Router from './routes/v1';
 
 // MIDDLEWARES
 import propsInit from './middlewares/propsInit';
+import * as response from './tools/response';
 
 // VARIABLES
 const corsOptions = {
@@ -49,7 +50,7 @@ app.use('/v1', v1Router);
 app.use(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (err: Error, req: Request, res: Response, _next: NextFunction): void => {
-    res.render('error');
+    response.error(req, res, err);
   }
 );
 
