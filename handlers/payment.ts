@@ -496,7 +496,7 @@ const stripe = {
     create: async function ({
       tokenData,
       clientIp,
-    }: Partial<Props>): Promise<void> {
+    }: Partial<Props>): Promise<StripeCustomer['customerId']> {
       if (!tokenData?.userId || !tokenData?.name || !tokenData?.email) {
         throw new Error('Name and email are required');
       }
@@ -518,6 +518,8 @@ const stripe = {
             clientIp,
           },
         });
+
+        return result.id as StripeCustomer['customerId'];
       } catch (e) {
         debug.extend('stripe.customer.create')(e);
         throw e;
@@ -547,8 +549,142 @@ const stripe = {
         throw e;
       }
     },
+    create: async function ({
+      productId,
+      name,
+    }: Pick<Product, 'productId' | 'name'>): Promise<
+      StripeProduct['stripeProductId']
+    > {
+      if (!productId || !name) {
+        throw new Error('Product ID and name are required');
+      }
+
+      try {
+        const result = await stripeClient.products.create({
+          name,
+        });
+
+        await executeQuery({
+          printName: 'payment.stripe.product.create',
+          // print: true,
+          table: tables.payment.stripe.product,
+          action: 'ignore',
+          set: {
+            productId,
+            stripeProductId: result.id as StripeProduct['stripeProductId'],
+          },
+        });
+
+        return result.id as StripeProduct['stripeProductId'];
+      } catch (e) {
+        debug.extend('stripe.product.create')(e);
+        throw e;
+      }
+    },
   },
-  checkout: {},
+  price: {
+    create: async function ({
+      productId,
+      price,
+      currency,
+      stripeProductId,
+    }: Pick<Product, 'productId' | 'price' | 'currency'> & {
+      stripeProductId: StripeProduct['stripeProductId'];
+    }): Promise<StripePrice['priceId']> {
+      if (!productId || !price || !currency) {
+        throw new Error('Product ID, price and currency are required');
+      }
+
+      try {
+        const result = await stripeClient.prices.create({
+          unit_amount_decimal: price.toString(),
+          currency,
+          product: stripeProductId,
+        });
+
+        await executeQuery({
+          printName: 'payment.stripe.price.create',
+          // print: true,
+          table: tables.payment.stripe.price,
+          action: 'ignore',
+          set: {
+            productId,
+            priceId: result.id as StripePrice['priceId'],
+            price,
+            currency,
+          },
+        });
+
+        return result.id as StripePrice['priceId'];
+      } catch (e) {
+        debug.extend('stripe.price.create')(e);
+        throw e;
+      }
+    },
+  },
+  checkout: {
+    create: async function ({
+      orderId,
+      productId,
+      pg,
+      method,
+      priceId,
+      customerId,
+      amount,
+      userId,
+    }: Pick<
+      LogPayment,
+      'orderId' | 'productId' | 'amount' | 'userId' | 'pg' | 'method'
+    > &
+      Pick<StripePrice, 'priceId'> &
+      Pick<StripeCustomer, 'customerId'>): Promise<
+      Stripe.Checkout.Session['url']
+    > {
+      if (!productId || !priceId || !amount || !userId) {
+        throw new Error(
+          'Product ID, price ID, amount and user ID are required',
+        );
+      }
+
+      try {
+        const send = {
+          success_url: `${process.env.BACKEND_URL}/v1/webhook/${pg}/${orderId}`,
+          line_items: [
+            {
+              price: priceId,
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          customer: customerId,
+          payment_method_types: [method],
+          metadata: {
+            orderId,
+            userId,
+          },
+        } as Stripe.Checkout.SessionCreateParams;
+
+        const result = await stripeClient.checkout.sessions.create(send);
+
+        await executeQuery({
+          printName: 'payment.stripe.checkout.create',
+          // print: true,
+          table: tables.payment.stripe.checkout,
+          action: 'ignore',
+          set: {
+            orderId,
+            send: jsonStringify(send),
+            response: jsonStringify(result),
+          },
+        });
+
+        return result.url as Stripe.Checkout.Session['url'];
+      } catch (e) {
+        debug.extend('stripe.checkout.create')(e);
+        throw e;
+      }
+    },
+  },
 };
 
 export {

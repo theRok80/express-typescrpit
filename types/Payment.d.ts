@@ -5,15 +5,24 @@ import { Product, ProductCoin } from './tables/payment';
 export namespace Handler {
   export interface GetProductData extends Product {
     coins: ProductCoin[];
+    stripe: {
+      product?: StripeProduct;
+      price?: StripePrice;
+    };
   }
 }
 export namespace Manager {
-  export interface Stripe {
-    name: 'stripe';
-    webhook(props: Props): Promise<{ message: string }>;
-    success(props: Props & { successDatetime: Date | string }): Promise<void>;
-    failed(props: Props): Promise<void>;
-    refunded(props: Props): Promise<void>;
+  export interface Prepare extends Props {
+    orderId: LogPayment['orderId'];
+  }
+  export interface Success extends Props {
+    orderId: LogPayment['orderId'];
+  }
+  export interface Failed extends Props {
+    orderId: LogPayment['orderId'];
+  }
+  export interface Refunded extends Props {
+    orderId: LogPayment['orderId'];
   }
 }
 

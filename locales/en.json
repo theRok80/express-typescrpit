@@ -1,5 +1,10 @@
 {
 	"Hello World": "Hello World",
 	"Stripe customer not found": "Stripe customer not found",
-	"test": "test"
+	"test": "test",
+	"Invalid integer: 100.00": "Invalid integer: 100.00",
+	"Failed to create price": "Failed to create price",
+	"The `return_url` parameter can only be used with `ui_mode: embedded`.": "The `return_url` parameter can only be used with `ui_mode: embedded`.",
+	"The Checkout Session's total amount must convert to at least 50 cents. ₩100 converts to approximately $0.07.": "The Checkout Session's total amount must convert to at least 50 cents. ₩100 converts to approximately $0.07.",
+	"too many execute query count: [payment.stripe.checkout.create] errors[Unknown column 'result' in 'field list', Unknown column 'result' in 'field list', Unknown column 'result' in 'field list', Unknown column 'result' in 'field list']": "too many execute query count: [payment.stripe.checkout.create] errors[Unknown column 'result' in 'field list', Unknown column 'result' in 'field list', Unknown column 'result' in 'field list', Unknown column 'result' in 'field list']"
 }

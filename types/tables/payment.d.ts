@@ -3,6 +3,7 @@ import { PAYMENT_STATUS } from '../../constants';
 import { Datetime } from '../variables';
 import { OrderIdStatus } from '../Payment';
 import Stripe from 'stripe';
+import { JsonStringified } from '../variables';
 
 export interface OrderIdWarehouse {
   orderId: string;
@@ -99,5 +100,12 @@ export interface StripePrice {
   priceId: Stripe.Price['id'];
   price: Product['price'];
   currency: Product['currency'];
+  createdAt: Datetime;
+}
+
+export interface StripeCheckout {
+  orderId: LogPayment['orderId'];
+  send: JsonStringified<Stripe.Checkout.SessionCreateParams>;
+  response: JsonStringified<Stripe.Response<Stripe.Checkout.Session>>;
   createdAt: Datetime;
 }

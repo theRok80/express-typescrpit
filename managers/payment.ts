@@ -5,17 +5,28 @@ import {
 } from '../constants';
 import { Props } from '../types/props';
 import { User } from '../types/tables/user';
-import { LogPayment, LogWebhook, Product } from '../types/tables/payment';
+import {
+  LogPayment,
+  LogWebhook,
+  Product,
+  StripeCustomer,
+  StripePrice,
+  StripeProduct,
+} from '../types/tables/payment';
 import DEBUG from 'debug';
 import * as handler from '../handlers/payment';
 import { AVAILABLE_PAYMENT_PG } from '../constants';
 import { PaymentPg, PaymentStatus } from '../types/Payment';
 import { getErrorMessage, jsonParse } from '../tools/common';
 import * as coinHandler from '../handlers/coin';
+import Stripe from 'stripe';
 
 const debug = DEBUG('dev:managers:payment');
 
-async function prepare(props: Props): Promise<LogPayment['orderId']> {
+async function prepare(props: Props): Promise<{
+  orderId: LogPayment['orderId'];
+  stripeCheckoutUrl?: Stripe.Checkout.Session['url'];
+}> {
   const { uuid } = props;
   const { pg, method, productId } = props?.requestParams as {
     pg: (typeof AVAILABLE_PAYMENT_PG)[keyof typeof AVAILABLE_PAYMENT_PG];
@@ -31,19 +42,48 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
   try {
     await handler.generateOrderId();
 
+    let customerId: StripeCustomer['customerId'] | undefined;
     if (pg === 'stripe') {
-      if (!(await handler.stripe.customer.get(userId))) {
-        await handler.stripe.customer.create(props);
+      customerId = (await handler.stripe.customer.get(userId))?.customerId;
+      if (!customerId) {
+        customerId = await handler.stripe.customer.create(props);
       }
+    }
+
+    if (!customerId) {
+      throw new Error('Failed to create customer');
     }
 
     const productData = await handler.getProductData(props?.requestParams);
 
-    debug.extend('productData')(productData);
-
-    throw new Error('test');
-
+    let stripeProductId: StripeProduct['stripeProductId'] | undefined;
+    let priceId: StripePrice['priceId'] | undefined;
     if (pg === 'stripe') {
+      const {
+        stripe: { product: stripeProduct, price: stripePrice },
+      } = productData;
+
+      stripeProductId = stripeProduct?.stripeProductId;
+      priceId = stripePrice?.priceId;
+
+      if (!stripeProduct) {
+        stripeProductId = await handler.stripe.product.create(productData);
+      }
+
+      if (!stripeProductId) {
+        throw new Error('Failed to create product');
+      }
+
+      if (!stripePrice) {
+        priceId = await handler.stripe.price.create({
+          ...productData,
+          stripeProductId,
+        });
+      }
+    }
+
+    if (!priceId) {
+      throw new Error('Failed to create price');
     }
 
     const orderId = await handler.getOrderId(uuid);
@@ -70,7 +110,24 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
       coins: productData.coins,
     });
 
-    return orderId;
+    let stripeCheckoutUrl: Stripe.Checkout.Session['url'] | undefined;
+    if (pg === 'stripe') {
+      stripeCheckoutUrl = await handler.stripe.checkout.create({
+        orderId,
+        productId,
+        pg,
+        method,
+        priceId,
+        customerId,
+        amount,
+        userId,
+      });
+    }
+
+    return {
+      orderId,
+      stripeCheckoutUrl,
+    };
   } catch (e) {
     await handler.setLogPayment({
       uuid,

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import * as response from './response';
+import { JsonStringified } from '../types/variables';
 
 function isLocalhost(ip: string) {
   return ip === '127.0.0.1' || ip === '::1';
@@ -28,7 +29,7 @@ function formValidationResult(req: Request, res: Response, next: NextFunction) {
  * @param data object or string
  * @returns
  */
-function jsonStringify(data: object | string): string {
+function jsonStringify<T>(data: T): JsonStringified<T> {
   if (typeof data === 'string') {
     return data;
   }

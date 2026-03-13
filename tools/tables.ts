@@ -20,6 +20,7 @@ export default {
       customer: 'stripeCustomer',
       product: 'stripeProduct',
       price: 'stripePrice',
+      checkout: 'stripeCheckout',
     },
   },
   sign: {
