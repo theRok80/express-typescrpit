@@ -5,6 +5,7 @@
 import { User } from './user';
 import { COIN_TYPE, WORK_COIN_STATUS } from '../../constants';
 import { Datetime } from '../variables';
+import { CoinType, WorkCoinStatus } from '../coin';
 
 /**
  * 코인 충전 로그
@@ -14,7 +15,7 @@ export interface LogCoinReserve {
   reserveId: number; // auto increment, primary keyre
   userId: User['userId'];
   coin: number;
-  coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE];
+  coinType: CoinType;
   relationType: string; // 해당 row의 생성 원인을 추적할 수 있는 타입
   relationId: string | number; // 해당 row의 생성 원인을 추적할 수 있는 아이디
   expiredAt?: Datetime; // 코인 만료 시간
@@ -29,7 +30,7 @@ export interface LogCoinReduce {
   reserveId: LogCoinReserve['reserveId'];
   userId: User['userId'];
   coin: number;
-  coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE];
+  coinType: CoinType;
   relationType: string; // 해당 row의 생성 원인을 추적할 수 있는 타입
   relationId: string | number; // 해당 row의 생성 원인을 추적할 수 있는 아이디
   createdAt: Datetime;
@@ -45,10 +46,10 @@ export interface WorkCoin {
   userId: User['userId'];
   coin: number; // 최초 생성 코인 양
   remains: number; // 남은 코인 양, 사용 시 해당 칼럼을 업데이트
-  coinType: (typeof COIN_TYPE)[keyof typeof COIN_TYPE]; // primary key
+  coinType: CoinType; // primary key
   relationType: LogCoinReserve['relationType'];
   relationId: LogCoinReserve['relationId'];
-  status: (typeof WORK_COIN_STATUS)[keyof typeof WORK_COIN_STATUS];
+  status: WorkCoinStatus;
   expiredAt: Datetime;
   createdAt: Datetime;
   updatedAt: Datetime;
