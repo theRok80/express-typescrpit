@@ -1,10 +1,12 @@
-// import * as manager from '../../managers/payment';
+import { Request, Response } from 'express';
+import * as manager from '../../managers/payment';
+import * as response from '../../tools/response';
 
-// function webhook(req: Request, res: Response): void {
-//   manager
-//     .webhook(req.props)
-//     .then(data => response.success(req, res, data))
-//     .catch(e => response.error(req, res, e));
-// }
+function webhookBatch(req: Request, res: Response): void {
+  manager
+    .webhookBatch()
+    .then(data => response.success(req, res, data))
+    .catch(e => response.error(req, res, e));
+}
 
-// export { webhook };
+export { webhookBatch };

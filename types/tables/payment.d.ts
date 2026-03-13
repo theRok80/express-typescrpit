@@ -22,6 +22,7 @@ export interface LogWebhook {
 }
 
 export interface WorkWebhook {
+  logId: LogWebhook['id'];
   orderId: LogPayment['orderId'];
   data: string;
   pg: (typeof PAYMENT_PG)[keyof typeof PAYMENT_PG];

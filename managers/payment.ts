@@ -10,7 +10,7 @@ import DEBUG from 'debug';
 import * as handler from '../handlers/payment';
 import { AVAILABLE_PAYMENT_PG } from '../constants';
 import { PaymentPg, PaymentStatus } from '../types/Payment';
-import { getErrorMessage } from '../tools/common';
+import { getErrorMessage, jsonParse } from '../tools/common';
 import * as coinHandler from '../handlers/coin';
 
 const debug = DEBUG('dev:managers:payment');
@@ -104,7 +104,7 @@ async function getAmountFromPrice({
  */
 function getOrderStatus(
   pg: PaymentPg,
-  props: Props,
+  props: Partial<Props>,
 ): {
   orderId: LogPayment['orderId'];
   status: PaymentStatus;
@@ -141,7 +141,7 @@ function getOrderStatus(
   }
 }
 
-async function webhook(pg: string, props: Props) {
+async function webhook(pg: string, props: Partial<Props>) {
   const webhookLogId = props?.webhookLogId as LogWebhook['id'];
 
   try {
@@ -381,4 +381,35 @@ async function failed({
   }
 }
 
-export { prepare, webhook };
+/**
+ * 잔행중 에러등으로 처리되지 않은 webhook 로그를 처리
+ */
+async function webhookBatch() {
+  try {
+    const workLogs = await handler.getWorkWebhookLog();
+
+    if (!workLogs?.length) {
+      return { message: 'no work logs' };
+    }
+
+    for (const log of workLogs) {
+      try {
+        const { logId, data, pg } = log;
+        await webhook(pg, {
+          webhookLogId: logId,
+          requestParams: {
+            ...jsonParse(data),
+          },
+        });
+      } catch (e) {
+        // 에러 로깅만 하고 다른 로그로 계속 진행
+        debug.extend('webhookBatch:error')(e);
+      }
+    }
+  } catch (e) {
+    debug.extend('webhookBatch:error')(e);
+    throw e;
+  }
+}
+
+export { prepare, webhook, webhookBatch };

@@ -11,8 +11,9 @@ import {
   OrderIdWarehouse,
   ProductCoin,
   LogPaymentCoin,
+  WorkWebhook,
 } from '../types/tables/payment';
-import { ORDER_ID_STATUS } from '../constants';
+import { dayjs, DATETIME_FORMAT, ORDER_ID_STATUS } from '../constants';
 
 const debug = DEBUG('dev:handlers:payment');
 
@@ -135,33 +136,31 @@ async function addWebhookLog(
 
   if (pg && orderId) {
     try {
-      const [[{ insertId: logId }]] = await Promise.all([
-        // log
-        await executeQuery({
-          printName: 'payment.addWebhookLog',
-          //print: true,
-          table: tables.payment.log.webhook,
-          action: 'ignore',
-          set: {
-            pg,
-            orderId,
-            data,
-          },
-        }),
+      const [{ insertId: logId }] = await executeQuery({
+        printName: 'payment.addWebhookLog',
+        //print: true,
+        table: tables.payment.log.webhook,
+        action: 'ignore',
+        set: {
+          pg,
+          orderId,
+          data,
+        },
+      });
 
-        // work
-        await executeQuery({
-          printName: 'payment.addWebhookLog',
-          //print: true,
-          table: tables.payment.work.webhook,
-          action: 'ignore',
-          set: {
-            pg,
-            orderId,
-            data,
-          },
-        }),
-      ]);
+      // work
+      await executeQuery({
+        printName: 'payment.addWebhookLog',
+        //print: true,
+        table: tables.payment.work.webhook,
+        action: 'ignore',
+        set: {
+          logId,
+          pg,
+          orderId,
+          data,
+        },
+      });
 
       return logId as LogWebhook['id'] | undefined;
     } catch (e) {
@@ -419,6 +418,27 @@ async function removeWorkWebhook({
   }
 }
 
+async function getWorkWebhookLog(): Promise<WorkWebhook[]> {
+  try {
+    // 아직 처리중인 로그는 제외하기 위해서 생성된지 2분 지난 로그만 확인
+    const createdAt = dayjs().subtract(2, 'minutes').format(DATETIME_FORMAT);
+    const [rows] = await executeQuery({
+      printName: 'payment.getWorkWebhookLog',
+      // print: true,
+      table: tables.payment.work.webhook,
+      action: 'select',
+      where: {
+        statement: [`\`createdAt\` <= ${createdAt}`],
+      },
+    });
+
+    return rows as WorkWebhook[];
+  } catch (e) {
+    debug.extend('getWorkWebhookLog')(e);
+    throw e;
+  }
+}
+
 export {
   generateOrderId,
   getOrderId,
@@ -430,4 +450,5 @@ export {
   getLogPayment,
   getLogPaymentCoin,
   removeWorkWebhook,
+  getWorkWebhookLog,
 };
