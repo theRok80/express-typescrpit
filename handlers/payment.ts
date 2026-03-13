@@ -2,6 +2,7 @@ import DEBUG from 'debug';
 import { Handler } from '../types/Payment';
 import { Props } from '../types/props';
 import { jsonStringify } from '../tools/common';
+import { User } from '../types/tables/user';
 import { bulkQueryBuilder, executeQuery } from '../tools/database';
 import tables from '../tools/tables';
 import {
@@ -12,8 +13,14 @@ import {
   ProductCoin,
   LogPaymentCoin,
   WorkWebhook,
+  StripeCustomer,
 } from '../types/tables/payment';
 import { dayjs, DATETIME_FORMAT, ORDER_ID_STATUS } from '../constants';
+import { StripeProduct, StripePrice } from '../types/tables/payment';
+
+import Stripe from 'stripe';
+
+const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 const debug = DEBUG('dev:handlers:payment');
 
@@ -209,29 +216,52 @@ async function getProductData({
   }
 
   try {
-    const [[mainRows], [coinRows]] = await Promise.all([
-      // main
-      await executeQuery({
-        printName: 'payment.getProductData.main',
-        //print: true,
-        table: tables.payment.product.main,
-        action: 'select',
-        where: {
-          productId,
-        },
-      }),
+    const [[mainRows], [coinRows], [stripeProductRows], [stripePriceRows]] =
+      await Promise.all([
+        // main
+        executeQuery({
+          printName: 'payment.getProductData.main',
+          //print: true,
+          table: tables.payment.product.main,
+          action: 'select',
+          where: {
+            productId,
+          },
+        }),
 
-      // coin
-      await executeQuery({
-        printName: 'payment.getProductData.coin',
-        //print: true,
-        table: tables.payment.product.coin,
-        action: 'select',
-        where: {
-          productId,
-        },
-      }),
-    ]);
+        // coin
+        executeQuery({
+          printName: 'payment.getProductData.coin',
+          //print: true,
+          table: tables.payment.product.coin,
+          action: 'select',
+          where: {
+            productId,
+          },
+        }),
+
+        // stripe product
+        executeQuery({
+          printName: 'payment.getProductData.stripeProduct',
+          //print: true,
+          table: tables.payment.stripe.product,
+          action: 'select',
+          where: {
+            productId,
+          },
+        }),
+
+        // stripe price
+        executeQuery({
+          printName: 'payment.getProductData.stripePrice',
+          //print: true,
+          table: tables.payment.stripe.price,
+          action: 'select',
+          where: {
+            productId,
+          },
+        }),
+      ]);
 
     if (!mainRows?.length || !coinRows?.length) {
       throw new Error('Product not found');
@@ -240,6 +270,10 @@ async function getProductData({
     return {
       ...(mainRows?.[0] as Product),
       coins: coinRows as ProductCoin[],
+      stripe: {
+        product: stripeProductRows?.[0] as StripeProduct | undefined,
+        price: stripePriceRows?.[0] as StripePrice | undefined,
+      },
     } as Handler.GetProductData;
   } catch (e) {
     debug.extend('getProductData')(e);
@@ -439,6 +473,84 @@ async function getWorkWebhookLog(): Promise<WorkWebhook[]> {
   }
 }
 
+const stripe = {
+  customer: {
+    get: async function (
+      userId: User['userId'],
+    ): Promise<StripeCustomer | undefined> {
+      try {
+        const [rows] = await executeQuery({
+          printName: 'payment.stripe.customer.get',
+          // print: true,
+          table: tables.payment.stripe.customer,
+          action: 'select',
+          where: { userId },
+        });
+
+        return rows?.[0] as StripeCustomer | undefined;
+      } catch (e) {
+        debug.extend('stripe.customer.get')(e);
+        throw e;
+      }
+    },
+    create: async function ({
+      tokenData,
+      clientIp,
+    }: Partial<Props>): Promise<void> {
+      if (!tokenData?.userId || !tokenData?.name || !tokenData?.email) {
+        throw new Error('Name and email are required');
+      }
+
+      try {
+        const result = await stripeClient.customers.create({
+          name: tokenData.name,
+          email: tokenData.email,
+        });
+
+        await executeQuery({
+          printName: 'payment.stripe.customer.create',
+          // print: true,
+          table: tables.payment.stripe.customer,
+          action: 'ignore',
+          set: {
+            userId: tokenData.userId,
+            customerId: result.id,
+            clientIp,
+          },
+        });
+      } catch (e) {
+        debug.extend('stripe.customer.create')(e);
+        throw e;
+      }
+    },
+  },
+  product: {
+    get: async function ({
+      productId,
+    }: Pick<Product, 'productId'>): Promise<StripeProduct | undefined> {
+      if (!productId) {
+        throw new Error('Product ID is required');
+      }
+
+      try {
+        const [rows] = await executeQuery({
+          printName: 'payment.stripe.product.get',
+          // print: true,
+          table: tables.payment.stripe.product,
+          action: 'select',
+          where: { productId },
+        });
+
+        return rows?.[0] as StripeProduct | undefined;
+      } catch (e) {
+        debug.extend('stripe.product.get')(e);
+        throw e;
+      }
+    },
+  },
+  checkout: {},
+};
+
 export {
   generateOrderId,
   getOrderId,
@@ -451,4 +563,5 @@ export {
   getLogPaymentCoin,
   removeWorkWebhook,
   getWorkWebhookLog,
+  stripe,
 };

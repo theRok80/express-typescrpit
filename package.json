@@ -36,6 +36,7 @@
     "@types/ioredis": "^5.0.0",
     "@types/node-cache": "^4.2.5",
     "@types/pg": "^8.18.0",
+    "@types/stripe": "^8.0.417",
     "async": "^3.2.6",
     "body-parser-xml": "^2.0.5",
     "compression": "^1.8.1",
@@ -58,7 +59,8 @@
     "node-cache": "^5.1.2",
     "npm-check-updates": "^19.6.3",
     "pg": "^8.20.0",
-    "request-ip": "^3.3.0"
+    "request-ip": "^3.3.0",
+    "stripe": "^20.4.1"
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.973.4",

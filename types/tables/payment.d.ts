@@ -2,6 +2,7 @@ import { Props } from '../props';
 import { PAYMENT_STATUS } from '../../constants';
 import { Datetime } from '../variables';
 import { OrderIdStatus } from '../Payment';
+import Stripe from 'stripe';
 
 export interface OrderIdWarehouse {
   orderId: string;
@@ -34,6 +35,7 @@ export interface Product {
   productId: number;
   name: string;
   price: number;
+  currency: string;
   createdAt: Datetime;
   updatedAt: Datetime;
 }
@@ -69,5 +71,33 @@ export interface LogPaymentCoin {
   coinType: ProductCoin['coinType'];
   periodValue: ProductCoin['periodValue'];
   periodUnit: ProductCoin['periodUnit'];
+  createdAt: Datetime;
+}
+
+export interface StripeCustomer {
+  userId: User['userId'];
+  customerId: string;
+  clientIp: string;
+  createdAt: Datetime;
+}
+
+export interface StripeType {
+  customer: {
+    get: StripeCustomer;
+    create: StripeCustomer;
+  };
+}
+
+export interface StripeProduct {
+  productId: Product['productId'];
+  stripeProductId: Stripe.Product['id'];
+  createdAt: Datetime;
+}
+
+export interface StripePrice {
+  productId: Product['productId'];
+  priceId: Stripe.Price['id'];
+  price: Product['price'];
+  currency: Product['currency'];
   createdAt: Datetime;
 }

@@ -24,10 +24,27 @@ async function prepare(props: Props): Promise<LogPayment['orderId']> {
   };
   const userId = props?.tokenData?.userId;
 
+  if (!userId) {
+    throw new Error('userId is required');
+  }
+
   try {
     await handler.generateOrderId();
 
+    if (pg === 'stripe') {
+      if (!(await handler.stripe.customer.get(userId))) {
+        await handler.stripe.customer.create(props);
+      }
+    }
+
     const productData = await handler.getProductData(props?.requestParams);
+
+    debug.extend('productData')(productData);
+
+    throw new Error('test');
+
+    if (pg === 'stripe') {
+    }
 
     const orderId = await handler.getOrderId(uuid);
     const amount = await getAmountFromPrice({

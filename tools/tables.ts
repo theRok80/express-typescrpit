@@ -16,6 +16,11 @@ export default {
       main: 'product',
       coin: 'productCoin',
     },
+    stripe: {
+      customer: 'stripeCustomer',
+      product: 'stripeProduct',
+      price: 'stripePrice',
+    },
   },
   sign: {
     log: 'logSign',

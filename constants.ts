@@ -62,6 +62,7 @@ const WORK_COIN_STATUS = {
   UNAVAILABLE: 0,
   AVAILABLE: 1,
 };
+const DEFAULT_CURRENCY = 'KRW';
 
 export {
   dayjs,
@@ -79,4 +80,5 @@ export {
   AVAILABLE_PAYMENT_PG,
   COIN_TYPE,
   WORK_COIN_STATUS,
+  DEFAULT_CURRENCY,
 };
